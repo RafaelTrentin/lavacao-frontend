@@ -236,9 +236,15 @@ export default function AdminDashboard() {
                   <XAxis dataKey="label" />
                   <YAxis />
                   <Tooltip
-                    formatter={(value: number) => `R$ ${Number(value).toFixed(2)}`}
-                    labelFormatter={(label) => `Data: ${label}`}
-                  />
+  formatter={(value: number) => [
+    value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }),
+    'Faturamento'
+  ]}
+  labelFormatter={(label) => `Data: ${label}`}
+/>
                   <Line
                     type="monotone"
                     dataKey="revenue"
