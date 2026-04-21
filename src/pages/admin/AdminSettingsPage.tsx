@@ -11,17 +11,27 @@ import {
   Palette,
   Clock3,
   Truck,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const DEFAULT_OPERATING_HOURS = {
+type OperatingPeriod = {
+  open: string;
+  close: string;
+};
+
+type OperatingHoursValue = OperatingPeriod[] | null;
+type OperatingHoursMap = Record<string, OperatingHoursValue>;
+
+const DEFAULT_OPERATING_HOURS: OperatingHoursMap = {
   SUNDAY: null,
-  MONDAY: { open: '08:00', close: '18:00' },
-  TUESDAY: { open: '08:00', close: '18:00' },
-  WEDNESDAY: { open: '08:00', close: '18:00' },
-  THURSDAY: { open: '08:00', close: '18:00' },
-  FRIDAY: { open: '08:00', close: '18:00' },
-  SATURDAY: { open: '08:00', close: '14:00' },
+  MONDAY: [{ open: '08:00', close: '18:00' }],
+  TUESDAY: [{ open: '08:00', close: '18:00' }],
+  WEDNESDAY: [{ open: '08:00', close: '18:00' }],
+  THURSDAY: [{ open: '08:00', close: '18:00' }],
+  FRIDAY: [{ open: '08:00', close: '18:00' }],
+  SATURDAY: [{ open: '08:00', close: '14:00' }],
 };
 
 const DAYS = [
@@ -33,6 +43,43 @@ const DAYS = [
   { key: 'FRIDAY', label: 'Sexta' },
   { key: 'SATURDAY', label: 'Sábado' },
 ];
+
+function normalizeOperatingHours(value: Record<string, any> | null | undefined): OperatingHoursMap {
+  const result: OperatingHoursMap = { ...DEFAULT_OPERATING_HOURS };
+
+  for (const day of DAYS) {
+    const raw = value?.[day.key];
+
+    if (!raw) {
+      result[day.key] = null;
+      continue;
+    }
+
+    const periods = Array.isArray(raw)
+      ? raw
+      : raw?.open && raw?.close
+        ? [raw]
+        : [];
+
+    const cleaned = periods
+      .filter(
+        (period) =>
+          period &&
+          typeof period.open === 'string' &&
+          typeof period.close === 'string' &&
+          period.open < period.close,
+      )
+      .map((period) => ({
+        open: period.open,
+        close: period.close,
+      }))
+      .sort((a, b) => a.open.localeCompare(b.open));
+
+    result[day.key] = cleaned.length > 0 ? cleaned : null;
+  }
+
+  return result;
+}
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
@@ -66,7 +113,7 @@ export default function AdminSettingsPage() {
     searchFeeUpTo5km: 0,
     searchFeeOver5km: 0,
     searchFeeLimitKm: 5,
-    operatingHoursJson: DEFAULT_OPERATING_HOURS as Record<string, any>,
+    operatingHoursJson: DEFAULT_OPERATING_HOURS as OperatingHoursMap,
   });
 
   const [addressForm, setAddressForm] = useState({
@@ -104,8 +151,9 @@ export default function AdminSettingsPage() {
         searchFeeUpTo5km: Number(settings.searchFeeUpTo5km || 0) / 100,
         searchFeeOver5km: Number(settings.searchFeeOver5km || 0) / 100,
         searchFeeLimitKm: Number(settings.searchFeeLimitKm || 5),
-        operatingHoursJson:
+        operatingHoursJson: normalizeOperatingHours(
           settings.operatingHours || DEFAULT_OPERATING_HOURS,
+        ),
       });
     }
   }, [settings]);
@@ -267,34 +315,67 @@ export default function AdminSettingsPage() {
     },
   });
 
-  const handleChangeOperatingHours = (
-    day: string,
-    field: 'open' | 'close',
-    value: string,
-  ) => {
-    setSettingsForm((prev) => ({
-      ...prev,
-      operatingHoursJson: {
-        ...prev.operatingHoursJson,
-        [day]: {
-          ...(prev.operatingHoursJson?.[day] || {
-            open: '08:00',
-            close: '18:00',
-          }),
-          [field]: value,
-        },
-      },
-    }));
-  };
-
   const handleToggleDay = (day: string, enabled: boolean) => {
     setSettingsForm((prev) => ({
       ...prev,
       operatingHoursJson: {
         ...prev.operatingHoursJson,
-        [day]: enabled ? { open: '08:00', close: '18:00' } : null,
+        [day]: enabled ? [{ open: '08:00', close: '18:00' }] : null,
       },
     }));
+  };
+
+  const handleChangePeriod = (
+    day: string,
+    index: number,
+    field: 'open' | 'close',
+    value: string,
+  ) => {
+    setSettingsForm((prev) => {
+      const periods = [...(prev.operatingHoursJson[day] || [])];
+      periods[index] = {
+        ...(periods[index] || { open: '08:00', close: '18:00' }),
+        [field]: value,
+      };
+
+      return {
+        ...prev,
+        operatingHoursJson: {
+          ...prev.operatingHoursJson,
+          [day]: periods,
+        },
+      };
+    });
+  };
+
+  const handleAddPeriod = (day: string) => {
+    setSettingsForm((prev) => {
+      const periods = [...(prev.operatingHoursJson[day] || [])];
+      periods.push({ open: '13:00', close: '18:00' });
+
+      return {
+        ...prev,
+        operatingHoursJson: {
+          ...prev.operatingHoursJson,
+          [day]: periods,
+        },
+      };
+    });
+  };
+
+  const handleRemovePeriod = (day: string, index: number) => {
+    setSettingsForm((prev) => {
+      const periods = [...(prev.operatingHoursJson[day] || [])];
+      periods.splice(index, 1);
+
+      return {
+        ...prev,
+        operatingHoursJson: {
+          ...prev.operatingHoursJson,
+          [day]: periods.length > 0 ? periods : null,
+        },
+      };
+    });
   };
 
   const isLoading =
@@ -321,7 +402,7 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               <h2 className="font-semibold text-foreground">Geral</h2>
@@ -355,7 +436,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
               <h2 className="font-semibold text-foreground">
@@ -483,7 +564,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="flex items-center gap-2">
             <Clock3 className="h-5 w-5 text-primary" />
             <h2 className="font-semibold text-foreground">
@@ -493,54 +574,96 @@ export default function AdminSettingsPage() {
 
           <div className="grid gap-3">
             {DAYS.map((day) => {
-              const value = settingsForm.operatingHoursJson?.[day.key];
-              const enabled = !!value;
+              const periods = settingsForm.operatingHoursJson?.[day.key] || [];
+              const enabled = periods.length > 0;
 
               return (
                 <div
                   key={day.key}
-                  className="grid gap-3 rounded-xl border border-border bg-background p-4 md:grid-cols-[180px_120px_1fr_1fr]"
+                  className="space-y-3 rounded-xl border border-border bg-background p-4"
                 >
-                  <div className="flex items-center justify-between gap-3 md:justify-start">
-                    <span className="text-sm font-medium text-foreground">
-                      {day.label}
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      onChange={(e) =>
-                        handleToggleDay(day.key, e.target.checked)
-                      }
-                    />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-foreground">
+                        {day.label}
+                      </span>
+
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={(e) =>
+                          handleToggleDay(day.key, e.target.checked)
+                        }
+                      />
+
+                      <span className="text-xs text-muted-foreground">
+                        {enabled ? 'Aberto' : 'Fechado'}
+                      </span>
+                    </div>
+
+                    {enabled && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => handleAddPeriod(day.key)}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Adicionar período
+                      </Button>
+                    )}
                   </div>
 
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    {enabled ? 'Aberto' : 'Fechado'}
-                  </div>
+                  {enabled && (
+                    <div className="space-y-3">
+                      {periods.map((period, index) => (
+                        <div
+                          key={`${day.key}-${index}`}
+                          className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                        >
+                          <input
+                            type="time"
+                            value={period.open}
+                            onChange={(e) =>
+                              handleChangePeriod(
+                                day.key,
+                                index,
+                                'open',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
 
-                  <input
-                    type="time"
-                    disabled={!enabled}
-                    value={enabled ? value.open : ''}
-                    onChange={(e) =>
-                      handleChangeOperatingHours(day.key, 'open', e.target.value)
-                    }
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary disabled:bg-muted"
-                  />
+                          <input
+                            type="time"
+                            value={period.close}
+                            onChange={(e) =>
+                              handleChangePeriod(
+                                day.key,
+                                index,
+                                'close',
+                                e.target.value,
+                              )
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
 
-                  <input
-                    type="time"
-                    disabled={!enabled}
-                    value={enabled ? value.close : ''}
-                    onChange={(e) =>
-                      handleChangeOperatingHours(
-                        day.key,
-                        'close',
-                        e.target.value,
-                      )
-                    }
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary disabled:bg-muted"
-                  />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleRemovePeriod(day.key, index)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Remover
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -576,7 +699,7 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-primary" />
               <h2 className="font-semibold text-foreground">Endereço</h2>
@@ -815,7 +938,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+          <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
             <div className="flex items-center gap-2">
               <Palette className="h-5 w-5 text-primary" />
               <h2 className="font-semibold text-foreground">Branding</h2>

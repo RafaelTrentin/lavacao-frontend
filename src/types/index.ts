@@ -19,9 +19,17 @@ export interface SignupDTO {
   phone: string;
   email: string;
   password: string;
-  role: 'ADMIN' |'CUSTOMER';
+  role: 'ADMIN' | 'CUSTOMER';
   businessSlug: string;
 }
+
+export interface OperatingPeriod {
+  open: string;
+  close: string;
+}
+
+export type OperatingHoursValue = OperatingPeriod[] | null;
+export type OperatingHoursMap = Record<string, OperatingHoursValue>;
 
 export interface VehicleTypeInfo {
   id: string;
@@ -117,7 +125,6 @@ export interface DashboardSummary {
     date: string;
   }>;
 
-  // 🔥 NOVOS CAMPOS
   cancellationRate: number;
   averageTicket: number;
 
