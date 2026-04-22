@@ -22,6 +22,7 @@ import NotFound from '@/pages/NotFound';
 import AdminVehicleTypesPage from './pages/admin/AdminVehicleTypesPage';
 import ClientExtrasPage from '@/pages/client/ClientExtrasPage';
 import RegisterPage from '@/pages/RegisterPage';
+import RootRedirect from './pages/RootRedirect';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +47,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<NotFound />} />
+      <Route path="/" element={<RootRedirect />} />
 
       <Route
         path="/empresa/:slug/login"
