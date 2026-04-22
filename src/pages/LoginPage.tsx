@@ -7,13 +7,30 @@ import { Label } from '@/components/ui/label';
 import { Droplets, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function LoginPage({ adminMode = false }: { adminMode?: boolean }) {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getStoredUser() {
+  try {
+    const raw = localStorage.getItem('washhub_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export default function LoginPage({
+  adminMode = false,
+}: {
+  adminMode?: boolean;
+}) {
   const branding = JSON.parse(localStorage.getItem('branding') || '{}');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, businessSlug } = useAuth();
   const navigate = useNavigate();
   const { slug } = useParams();
 
@@ -23,18 +40,25 @@ export default function LoginPage({ adminMode = false }: { adminMode?: boolean }
     setLoading(true);
 
     try {
-      await login(
-        email.trim(),
-        password.trim(),
-        adminMode ? undefined : slug || '',
-      );
+      const routeSlug = adminMode ? undefined : slug || '';
+      await login(email.trim(), password.trim(), routeSlug);
 
-      const savedUser = JSON.parse(localStorage.getItem('washhub_user') || '{}');
-      navigate(
-        savedUser?.role === 'ADMIN' ? '/admin' : `/empresa/${slug}`,
-      );
+      // Pequena folga para Safari/iOS/PWA estabilizar localStorage + contexto
+      await sleep(50);
+
+      const savedUser = getStoredUser();
+      const savedSlug =
+        localStorage.getItem('washhub_business_slug') || businessSlug || slug;
+
+      if (savedUser?.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+      } else if (savedSlug) {
+        navigate(`/empresa/${savedSlug}`, { replace: true });
+      } else {
+        navigate('/admin/login', { replace: true });
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Email ou senha inválidos');
+      setError(err?.response?.data?.message || 'Email ou senha inválidos');
     } finally {
       setLoading(false);
     }
@@ -76,7 +100,10 @@ export default function LoginPage({ adminMode = false }: { adminMode?: boolean }
         <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-foreground"
+              >
                 Email
               </Label>
               <Input
@@ -95,7 +122,10 @@ export default function LoginPage({ adminMode = false }: { adminMode?: boolean }
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-foreground"
+              >
                 Senha
               </Label>
               <Input
@@ -124,7 +154,11 @@ export default function LoginPage({ adminMode = false }: { adminMode?: boolean }
               className="h-11 w-full gradient-primary font-medium text-primary-foreground"
               disabled={loading}
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Entrar'}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Entrar'
+              )}
             </Button>
 
             {!adminMode && (
@@ -133,11 +167,11 @@ export default function LoginPage({ adminMode = false }: { adminMode?: boolean }
                 <Link
                   to={`/empresa/${slug}/register`}
                   className="font-medium text-primary hover:underline"
-            >
-                Criar conta
+                >
+                  Criar conta
                 </Link>
               </p>
-          )}
+            )}
           </form>
         </div>
       </motion.div>

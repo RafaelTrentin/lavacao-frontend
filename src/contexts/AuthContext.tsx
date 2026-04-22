@@ -119,8 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('washhub_user', JSON.stringify(builtUser));
 
     if (data.businessSlug) {
-      localStorage.setItem('washhub_business_slug', data.businessSlug);
-      setBusinessSlug(data.businessSlug);
+      const normalizedSlug = data.businessSlug.trim();
+      localStorage.setItem('washhub_business_slug', normalizedSlug);
+      setBusinessSlug(normalizedSlug);
     } else {
       localStorage.removeItem('washhub_business_slug');
       setBusinessSlug(null);
