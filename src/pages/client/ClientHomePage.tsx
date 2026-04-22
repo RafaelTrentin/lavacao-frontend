@@ -8,12 +8,26 @@ import {
   Sparkles,
   ArrowRight,
   Bell,
+  Download,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { notificationsApi, customersApi } from '@/lib/api';
 import { enablePushNotifications } from '@/lib/push';
 import { toast } from 'sonner';
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+function isStandaloneMode() {
+  return (
+    window.matchMedia?.('(display-mode: standalone)')?.matches ||
+    // iOS Safari
+    (window.navigator as any).standalone === true
+  );
+}
 
 export default function ClientHomePage() {
   const { user } = useAuth();
@@ -22,6 +36,10 @@ export default function ClientHomePage() {
   const [checkingPushStatus, setCheckingPushStatus] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [enablingPush, setEnablingPush] = useState(false);
+
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const basePath = slug ? `/empresa/${slug}` : '';
 
@@ -78,16 +96,77 @@ export default function ClientHomePage() {
     checkPushStatus();
   }, []);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const promptEvent = e as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+
+      if (isStandaloneMode()) {
+        setShowInstallBanner(false);
+        return;
+      }
+
+      setDeferredPrompt(promptEvent);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleInstalled = () => {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('appinstalled', handleInstalled);
+
+    return () => {
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
   const handleEnablePush = async () => {
     try {
       setEnablingPush(true);
       await enablePushNotifications();
-      setPushEnabled(true);
+
+      // Revalida logo após ativar para refletir sem precisar recarregar
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setPushEnabled(!!subscription);
+      } else {
+        setPushEnabled(true);
+      }
+
       toast.success('Notificações ativadas com sucesso');
     } catch (error: any) {
       toast.error(error?.message || 'Não foi possível ativar as notificações');
     } finally {
       setEnablingPush(false);
+      setCheckingPushStatus(false);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+
+    try {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+
+      if (choice.outcome === 'accepted') {
+        setShowInstallBanner(false);
+      }
+    } catch {
+      toast.error('Não foi possível abrir a instalação do app');
+    } finally {
+      setDeferredPrompt(null);
     }
   };
 
@@ -130,6 +209,34 @@ export default function ClientHomePage() {
                   className="mt-3 inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {enablingPush ? 'Ativando...' : 'Ativar notificações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showInstallBanner && !isStandaloneMode() && (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                <Download className="h-5 w-5 text-primary" />
+              </div>
+
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">
+                  Instale o app no seu celular
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tenha acesso mais rápido, abra direto pela tela inicial e
+                  aproveite uma experiência mais parecida com app.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleInstallApp}
+                  className="mt-3 inline-flex rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+                >
+                  Instalar app
                 </button>
               </div>
             </div>

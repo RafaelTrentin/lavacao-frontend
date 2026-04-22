@@ -18,6 +18,17 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
   NO_SHOW: { label: 'Não compareceu', className: 'bg-warning/10 text-warning' },
 };
 
+const VEHICLE_LABELS: Record<string, string> = {
+  CAR: 'Carro',
+  MOTORCYCLE: 'Moto',
+};
+
+function getVehicleLabel(vehicleType: string) {
+  if (!vehicleType) return 'Veículo';
+
+  return VEHICLE_LABELS[vehicleType] || vehicleType;
+}
+
 export default function MyAppointmentsPage() {
   const queryClient = useQueryClient();
 
@@ -72,15 +83,15 @@ export default function MyAppointmentsPage() {
                         {apt.snapshotServiceModeName}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        {apt.vehicleType === 'CAR' ? 'Carro' : 'Moto'}
+                        {getVehicleLabel(apt.vehicleType)}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         #{apt.bookingNumber}
                       </p>
                       {apt.willSearchVehicle && (
-                      <p className="mt-1 text-xs text-primary font-medium">
-                        🚗 Busca e entrega
-                      </p>
+                        <p className="mt-1 text-xs font-medium text-primary">
+                          🚗 Busca e entrega
+                        </p>
                       )}
                     </div>
 
@@ -108,7 +119,10 @@ export default function MyAppointmentsPage() {
 
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
                     <span className="font-semibold text-foreground">
-                      R$ {(apt.snapshotTotalPriceInCents / 100).toFixed(2)}
+                      {apt.snapshotTotalPriceInCents.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
                     </span>
 
                     {canCancel && (
