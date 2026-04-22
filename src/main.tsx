@@ -2,17 +2,18 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-async function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
+async function disableServiceWorkers() {
+  if ("serviceWorker" in navigator) {
     try {
-      await navigator.serviceWorker.register('/sw.js');
-      console.log('Service worker registrado com sucesso');
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+      console.log("Service workers removidos com sucesso");
     } catch (error) {
-      console.error('Erro ao registrar service worker:', error);
+      console.error("Erro ao remover service workers:", error);
     }
   }
 }
 
-registerServiceWorker();
+disableServiceWorkers();
 
 createRoot(document.getElementById("root")!).render(<App />);
