@@ -1,8 +1,9 @@
 {
   "name": "WashHub",
   "short_name": "WashHub",
-  "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "scope": "/",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "icons": [
