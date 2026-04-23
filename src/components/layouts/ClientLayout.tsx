@@ -47,9 +47,9 @@ export default function ClientLayout({
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md">
-        <div className="container flex max-w-lg items-center justify-between px-4 py-3">
+    <div className="app-shell flex flex-col bg-background">
+      <header className="safe-area-top shrink-0 border-b border-border bg-card/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <div
               className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg ${
@@ -67,7 +67,7 @@ export default function ClientLayout({
               )}
             </div>
 
-            <span className="tracking-tight text-lg font-bold text-sidebar-primary-foreground">
+            <span className="text-lg font-bold tracking-tight text-foreground">
               {branding.name || 'WashHub'}
             </span>
           </div>
@@ -95,12 +95,14 @@ export default function ClientLayout({
         </div>
       </header>
 
-      <main className="flex-1">
-        <div className="container max-w-lg px-4 py-5">{children}</div>
+      <main className="app-scroll min-h-0 flex-1">
+        <div className="mx-auto w-full max-w-lg px-4 py-5">
+          {children}
+        </div>
       </main>
 
-      <nav className="safe-area-bottom sticky bottom-0 z-50 border-t border-border bg-card/90 backdrop-blur-md">
-        <div className="container flex max-w-lg items-center justify-around px-2 py-2">
+      <nav className="safe-area-bottom shrink-0 border-t border-border bg-card/90 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-lg items-center justify-around px-2 py-2">
           {navItems.map((item) => {
             const active = location.pathname === item.path;
 

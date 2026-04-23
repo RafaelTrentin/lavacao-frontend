@@ -15,7 +15,6 @@ import {
   Car,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import path from 'path';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,27 +43,28 @@ export default function AdminLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="app-shell flex bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
         <div className="flex items-center gap-3 px-6 py-5">
           <div
-  className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ${
-    branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
-  }`}
->
-  {branding.logoUrl ? (
-    <img
-      src={branding.logoUrl}
-      alt="Logo"
-      className="h-full w-full object-contain"
-    />
-  ) : (
-    <Droplets className="h-5 w-5 text-primary-foreground" />
-  )}
-</div>
-          <span className="tracking-tight text-lg font-bold text-sidebar-primary-foreground">
-                {branding.name || 'WashHub'}
+            className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg ${
+              branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
+            }`}
+          >
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt="Logo"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <Droplets className="h-5 w-5 text-primary-foreground" />
+            )}
+          </div>
+
+          <span className="text-lg font-bold tracking-tight text-sidebar-primary-foreground">
+            {branding.name || 'WashHub'}
           </span>
         </div>
 
@@ -113,38 +113,42 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Mobile */}
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
-          <div className="flex items-center gap-2">
-            <div
-  className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg ${
-    branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
-  }`}
->
-  {branding.logoUrl ? (
-    <img
-      src={branding.logoUrl}
-      alt="Logo"
-      className="h-full w-full object-contain"
-    />
-  ) : (
-    <Droplets className="h-4 w-4 text-primary-foreground" />
-  )}
-</div>
-            <span className="font-bold text-foreground">WashHub</span>
-          </div>
+      {/* Main */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-border bg-card lg:hidden">
+          <div className="safe-area-top flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div
+                className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg ${
+                  branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
+                }`}
+              >
+                {branding.logoUrl ? (
+                  <img
+                    src={branding.logoUrl}
+                    alt="Logo"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <Droplets className="h-4 w-4 text-primary-foreground" />
+                )}
+              </div>
+              <span className="font-bold text-foreground">
+                {branding.name || 'WashHub'}
+              </span>
+            </div>
 
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-lg p-2 hover:bg-muted"
-          >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="rounded-lg p-2 hover:bg-muted"
+            >
+              {mobileOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </header>
 
         <AnimatePresence>
@@ -153,7 +157,7 @@ export default function AdminLayout({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-b border-border bg-card lg:hidden"
+              className="shrink-0 overflow-hidden border-b border-border bg-card lg:hidden"
             >
               <nav className="space-y-1 px-3 py-2">
                 {navItems.map((item) => {
@@ -187,8 +191,10 @@ export default function AdminLayout({
           )}
         </AnimatePresence>
 
-        <main className="flex-1 overflow-auto">
-          <div className="container max-w-7xl py-6 lg:py-8">{children}</div>
+        <main className="app-scroll min-h-0 flex-1">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-6 lg:py-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>
