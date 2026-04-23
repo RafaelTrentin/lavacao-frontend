@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -42,8 +42,10 @@ type SearchTypeOption = 'CURRENT_LOCATION' | 'MANUAL_ADDRESS' | null;
 
 export default function NewAppointmentPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { slug } = useParams();
-  const basePath = slug ? `/empresa/${slug}` : '';  
+  const basePath = slug ? `/empresa/${slug}` : '';
+
   const [step, setStep] = useState(0);
   const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
   const [serviceMode, setServiceMode] = useState<ServiceMode | null>(null);
@@ -82,20 +84,59 @@ export default function NewAppointmentPage() {
 
   const formattedDate = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
 
-  const { data: slots = [], isLoading: loadingSlots } = useQuery({
-    queryKey: ['slots', serviceMode?.id, vehicleType, formattedDate],
+  const slotsQueryKey = ['slots', serviceMode?.id, vehicleType, formattedDate];
+
+  const {
+    data: slots = [],
+    isLoading: loadingSlots,
+    refetch: refetchSlots,
+  } = useQuery({
+    queryKey: slotsQueryKey,
     queryFn: () =>
       availabilityApi.getSlots(serviceMode!.id, vehicleType!, formattedDate),
     enabled: !!serviceMode && !!vehicleType && !!selectedDate,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+
+    const stillExists = slots.some(
+      (slot) => slot.startTime === selectedSlot.startTime,
+    );
+
+    if (!stillExists) {
+      setSelectedSlot(null);
+    }
+  }, [slots, selectedSlot]);
+
+  useEffect(() => {
+    if (step === 3 && serviceMode && vehicleType && selectedDate) {
+      refetchSlots();
+    }
+  }, [step, serviceMode, vehicleType, selectedDate, refetchSlots]);
 
   const createMutation = useMutation({
     mutationFn: appointmentsApi.create,
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['my-appointments'] });
+      await queryClient.invalidateQueries({ queryKey: slotsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: ['slots'] });
+
+      setSelectedSlot(null);
+
       toast.success('Agendamento confirmado!');
       navigate(`${basePath}/my-appointments`);
     },
-    onError: (error: any) => {
+    onError: async (error: any) => {
+      await queryClient.invalidateQueries({ queryKey: slotsQueryKey });
+      await queryClient.invalidateQueries({ queryKey: ['slots'] });
+      setSelectedSlot(null);
+
       const message =
         error?.response?.data?.message || 'Erro ao criar agendamento';
       toast.error(Array.isArray(message) ? message.join(', ') : message);
@@ -777,7 +818,7 @@ export default function NewAppointmentPage() {
                       </p>
 
                       <Link
-                        to="/extras"
+                        to={`${basePath}/extras`}
                         className="mt-3 inline-flex text-sm font-medium text-primary hover:underline"
                       >
                         Ver serviços extras
