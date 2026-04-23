@@ -11,7 +11,7 @@ import {
   Download,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi, customersApi } from '@/lib/api';
 import { enablePushNotifications } from '@/lib/push';
 import { toast } from 'sonner';
@@ -24,7 +24,6 @@ type BeforeInstallPromptEvent = Event & {
 function isStandaloneMode() {
   return (
     window.matchMedia?.('(display-mode: standalone)')?.matches ||
-    // iOS Safari
     (window.navigator as any).standalone === true
   );
 }
@@ -32,6 +31,7 @@ function isStandaloneMode() {
 export default function ClientHomePage() {
   const { user } = useAuth();
   const { slug } = useParams();
+  const queryClient = useQueryClient();
 
   const [checkingPushStatus, setCheckingPushStatus] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -61,7 +61,11 @@ export default function ClientHomePage() {
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
     queryFn: notificationsApi.list,
-    refetchInterval: 30000,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: 'always',
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
   });
 
   const { data: profile } = useQuery({
@@ -133,9 +137,10 @@ export default function ClientHomePage() {
   const handleEnablePush = async () => {
     try {
       setEnablingPush(true);
+
       await enablePushNotifications();
 
-      // Revalida logo após ativar para refletir sem precisar recarregar
+      // Revalida imediatamente sem precisar atualizar a página
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
@@ -143,6 +148,8 @@ export default function ClientHomePage() {
       } else {
         setPushEnabled(true);
       }
+
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
       toast.success('Notificações ativadas com sucesso');
     } catch (error: any) {

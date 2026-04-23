@@ -31,14 +31,27 @@ export async function enablePushNotifications() {
     throw new Error('Chave pública de push não configurada');
   }
 
-  let subscription = await registration.pushManager.getSubscription();
+  // Remove inscrição antiga para garantir vínculo novo com as chaves atuais
+  const existingSubscription = await registration.pushManager.getSubscription();
 
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
+  if (existingSubscription) {
+    try {
+      await pushNotificationsApi.unsubscribe(existingSubscription.endpoint);
+    } catch {
+      // ignora falha de cleanup no backend
+    }
+
+    try {
+      await existingSubscription.unsubscribe();
+    } catch {
+      // ignora falha local de unsubscribe
+    }
   }
+
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
 
   await pushNotificationsApi.subscribe(subscription.toJSON());
 
