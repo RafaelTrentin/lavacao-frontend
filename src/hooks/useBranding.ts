@@ -24,10 +24,10 @@ function getSlugFromPath() {
 }
 
 export function useBranding() {
-  const token = localStorage.getItem('washhub_token');
+  const token = localStorage.getItem('washsync_token');
   const slug = getSlugFromPath();
-  const savedBusinessSlug = localStorage.getItem('washhub_business_slug');
-  const savedUserRaw = localStorage.getItem('washhub_user');
+  const savedBusinessSlug = localStorage.getItem('washsync_business_slug');
+  const savedUserRaw = localStorage.getItem('washsync_user');
   const savedUser = savedUserRaw ? JSON.parse(savedUserRaw) : null;
   const isAdmin = savedUser?.role === 'ADMIN';
 
@@ -81,7 +81,7 @@ export function useBranding() {
 
         return {
           ...branding,
-          name: business?.name || 'WashHub',
+          name: business?.name || 'WashSync',
           slug: business?.slug || null,
         };
       }
@@ -99,7 +99,7 @@ export function useBranding() {
       localStorage.setItem('branding', JSON.stringify(data));
 
       if (data.slug && (!token || isAdmin)) {
-        localStorage.setItem('washhub_business_slug', data.slug);
+        localStorage.setItem('washsync_business_slug', data.slug);
       }
     }
   }, [data, token, isAdmin]);

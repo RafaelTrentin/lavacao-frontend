@@ -64,7 +64,7 @@ export default function AdminLayout({
           </div>
 
           <span className="text-lg font-bold tracking-tight text-sidebar-primary-foreground">
-            {branding.name || 'WashHub'}
+            {branding.name || 'WashSync'}
           </span>
         </div>
 
@@ -134,7 +134,7 @@ export default function AdminLayout({
                 )}
               </div>
               <span className="font-bold text-foreground">
-                {branding.name || 'WashHub'}
+                {branding.name || 'WashSync'}
               </span>
             </div>
 

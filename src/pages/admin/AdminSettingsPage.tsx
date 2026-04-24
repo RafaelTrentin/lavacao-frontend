@@ -256,7 +256,7 @@ export default function AdminSettingsPage() {
       const updatedBranding = {
         ...branding,
         ...variables,
-        name: businessName || 'WashHub',
+        name: businessName || 'WashSync',
       };
 
       localStorage.setItem('branding', JSON.stringify(updatedBranding));

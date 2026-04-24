@@ -68,7 +68,7 @@ export default function ClientLayout({
             </div>
 
             <span className="text-lg font-bold tracking-tight text-foreground">
-              {branding.name || 'WashHub'}
+              {branding.name || 'WashSync'}
             </span>
           </div>
 

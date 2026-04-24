@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 
 function getStoredUser() {
   try {
-    const raw = localStorage.getItem('washhub_user');
+    const raw = localStorage.getItem('washsync_user');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -10,8 +10,8 @@ function getStoredUser() {
 }
 
 export default function RootRedirect() {
-  const slug = localStorage.getItem('washhub_business_slug');
-  const token = localStorage.getItem('washhub_token');
+  const slug = localStorage.getItem('washsync_business_slug');
+  const token = localStorage.getItem('washsync_token');
   const user = getStoredUser();
 
   // Admin logado

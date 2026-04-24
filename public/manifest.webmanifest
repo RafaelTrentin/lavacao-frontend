@@ -1,6 +1,6 @@
 {
-  "name": "WashHub",
-  "short_name": "WashHub",
+  "name": "WashSync",
+  "short_name": "WashSync",
   "id": "/",
   "display": "standalone",
   "scope": "/",

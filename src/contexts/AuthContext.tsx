@@ -48,9 +48,9 @@ function buildUserFromToken(token: string): User {
 }
 
 function clearSessionStorage() {
-  localStorage.removeItem('washhub_token');
-  localStorage.removeItem('washhub_user');
-  localStorage.removeItem('washhub_business_slug');
+  localStorage.removeItem('washsync_token');
+  localStorage.removeItem('washsync_user');
+  localStorage.removeItem('washsync_business_slug');
   localStorage.removeItem('branding');
 }
 
@@ -61,8 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('washhub_token');
-    const savedBusinessSlug = localStorage.getItem('washhub_business_slug');
+    const savedToken = localStorage.getItem('washsync_token');
+    const savedBusinessSlug = localStorage.getItem('washsync_business_slug');
 
     if (savedToken) {
       try {
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(savedToken);
           setUser(builtUser);
           setBusinessSlug(savedBusinessSlug || null);
-          localStorage.setItem('washhub_user', JSON.stringify(builtUser));
+          localStorage.setItem('washsync_user', JSON.stringify(builtUser));
         } else {
           clearSessionStorage();
         }
@@ -91,16 +91,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const normalizedSlug = slug?.trim() || undefined;
       const response = await authApi.login(email, password, normalizedSlug);
 
-      localStorage.setItem('washhub_token', response.accessToken);
+      localStorage.setItem('washsync_token', response.accessToken);
 
       const builtUser = buildUserFromToken(response.accessToken);
-      localStorage.setItem('washhub_user', JSON.stringify(builtUser));
+      localStorage.setItem('washsync_user', JSON.stringify(builtUser));
 
       if (normalizedSlug) {
-        localStorage.setItem('washhub_business_slug', normalizedSlug);
+        localStorage.setItem('washsync_business_slug', normalizedSlug);
         setBusinessSlug(normalizedSlug);
       } else {
-        localStorage.removeItem('washhub_business_slug');
+        localStorage.removeItem('washsync_business_slug');
         setBusinessSlug(null);
       }
 
@@ -113,17 +113,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (data: SignupDTO) => {
     const response = await authApi.signup(data);
 
-    localStorage.setItem('washhub_token', response.accessToken);
+    localStorage.setItem('washsync_token', response.accessToken);
 
     const builtUser = buildUserFromToken(response.accessToken);
-    localStorage.setItem('washhub_user', JSON.stringify(builtUser));
+    localStorage.setItem('washsync_user', JSON.stringify(builtUser));
 
     if (data.businessSlug) {
       const normalizedSlug = data.businessSlug.trim();
-      localStorage.setItem('washhub_business_slug', normalizedSlug);
+      localStorage.setItem('washsync_business_slug', normalizedSlug);
       setBusinessSlug(normalizedSlug);
     } else {
-      localStorage.removeItem('washhub_business_slug');
+      localStorage.removeItem('washsync_business_slug');
       setBusinessSlug(null);
     }
 

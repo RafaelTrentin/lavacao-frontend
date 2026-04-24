@@ -13,7 +13,7 @@ function sleep(ms: number) {
 
 function getStoredUser() {
   try {
-    const raw = localStorage.getItem('washhub_user');
+    const raw = localStorage.getItem('washsync_user');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -48,7 +48,7 @@ export default function LoginPage({
 
       const savedUser = getStoredUser();
       const savedSlug =
-        localStorage.getItem('washhub_business_slug') || businessSlug || slug;
+        localStorage.getItem('washsync_business_slug') || businessSlug || slug;
 
       if (savedUser?.role === 'ADMIN') {
         navigate('/admin', { replace: true });
@@ -90,7 +90,7 @@ export default function LoginPage({
           </div>
 
           <h1 className="text-2xl font-bold text-foreground">
-            {branding.name || 'WashHub'}
+            {branding.name || 'WashSync'}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Faça login para continuar

@@ -3,7 +3,7 @@ self.addEventListener('push', (event) => {
 
   const data = event.data.json();
 
-  const title = data.title || 'WashHub';
+  const title = data.title || 'WashSync';
   const options = {
     body: data.body || 'Você tem uma nova notificação.',
     icon: '/icons/icon-192.png',

@@ -106,7 +106,7 @@ export default function RegisterPage() {
           </div>
 
           <h1 className="text-2xl font-bold text-foreground">
-            {branding.name || 'WashHub'}
+            {branding.name || 'WashSync'}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Crie sua conta para agendar

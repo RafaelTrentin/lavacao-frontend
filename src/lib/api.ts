@@ -23,7 +23,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('washhub_token');
+  const token = localStorage.getItem('washsync_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -34,7 +34,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('washhub_token');
+      localStorage.removeItem('washsync_token');
       const slug = getCurrentBusinessSlugFromPath();
         window.location.href = slug ? `/empresa/${slug}/login` : '/';
     }
