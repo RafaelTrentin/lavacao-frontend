@@ -78,15 +78,11 @@ export default function LoginPage({
               branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
             }`}
           >
-            {branding.logoUrl ? (
-              <img
-                src={branding.logoUrl}
-                alt="Logo"
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <Droplets className="h-7 w-7 text-primary-foreground" />
-            )}
+            <img
+              src={branding.logoUrl || '/WashSync-Logo.png'}
+              alt={branding.name || 'WashSync'}
+              className="h-full w-full object-contain"
+/>
           </div>
 
           <h1 className="text-2xl font-bold text-foreground">
