@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Droplets, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 function sleep(ms: number) {
@@ -73,16 +73,12 @@ export default function LoginPage({
         className="w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center">
-          <div
-            className={`mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl shadow-elevated ${
-              branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
-            }`}
-          >
+          <div className="mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl">
             <img
               src={branding.logoUrl || '/WashSync-Logo.png'}
               alt={branding.name || 'WashSync'}
               className="h-full w-full object-contain"
-/>
+            />
           </div>
 
           <h1 className="text-2xl font-bold text-foreground">
