@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import {
   appointmentsApi,
   availabilityApi,
-  mapsApi,
   serviceModesApi,
   vehicleTypesApi,
 } from '@/lib/api';
@@ -83,7 +82,6 @@ export default function NewAppointmentPage() {
   });
 
   const formattedDate = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-
   const slotsQueryKey = ['slots', serviceMode?.id, vehicleType, formattedDate];
 
   const {
@@ -143,32 +141,6 @@ export default function NewAppointmentPage() {
     },
   });
 
-  const geocodeManualAddressMutation = useMutation({
-    mutationFn: mapsApi.geocodeAddress,
-    onSuccess: (result: any) => {
-      setManualAddress((prev) => ({
-        ...prev,
-        streetAddress:
-          result.normalizedAddress.streetAddress || prev.streetAddress,
-        number: result.normalizedAddress.number || prev.number,
-        neighborhood:
-          result.normalizedAddress.neighborhood || prev.neighborhood,
-        city: result.normalizedAddress.city || prev.city,
-        state: result.normalizedAddress.state || prev.state,
-        zipCode: result.normalizedAddress.zipCode || prev.zipCode,
-        latitude: result.latitude,
-        longitude: result.longitude,
-        validatedLabel: result.label || '',
-      }));
-      toast.success('Endereço validado com sucesso');
-    },
-    onError: (error: any) => {
-      const message =
-        error?.response?.data?.message || 'Não foi possível validar o endereço';
-      toast.error(Array.isArray(message) ? message.join(', ') : message);
-    },
-  });
-
   const filteredModes = useMemo(() => {
     if (!vehicleType) return [];
     return serviceModes.filter((mode) =>
@@ -192,12 +164,8 @@ export default function NewAppointmentPage() {
     !!serviceMode &&
     !!vehicleType &&
     pickupDelivery &&
-    !!searchType &&
-    ((searchType === 'CURRENT_LOCATION' && !!location) ||
-      (searchType === 'MANUAL_ADDRESS' &&
-        !!manualAddress.streetAddress &&
-        !!manualAddress.city &&
-        !!manualAddress.state));
+    searchType === 'CURRENT_LOCATION' &&
+    !!location;
 
   const { data: searchEstimate, isLoading: loadingSearchEstimate } = useQuery({
     queryKey: [
@@ -208,14 +176,6 @@ export default function NewAppointmentPage() {
       searchType,
       location?.latitude,
       location?.longitude,
-      manualAddress.streetAddress,
-      manualAddress.number,
-      manualAddress.neighborhood,
-      manualAddress.city,
-      manualAddress.state,
-      manualAddress.zipCode,
-      manualAddress.latitude,
-      manualAddress.longitude,
     ],
     queryFn: () =>
       appointmentsApi.estimateSearchFee({
@@ -223,30 +183,8 @@ export default function NewAppointmentPage() {
         vehicleType: vehicleType!,
         willSearchVehicle: pickupDelivery,
         searchType: searchType || undefined,
-        streetAddress:
-          searchType === 'MANUAL_ADDRESS'
-            ? manualAddress.streetAddress
-            : undefined,
-        number:
-          searchType === 'MANUAL_ADDRESS' ? manualAddress.number : undefined,
-        neighborhood:
-          searchType === 'MANUAL_ADDRESS'
-            ? manualAddress.neighborhood
-            : undefined,
-        city: searchType === 'MANUAL_ADDRESS' ? manualAddress.city : undefined,
-        state:
-          searchType === 'MANUAL_ADDRESS' ? manualAddress.state : undefined,
-        zipCode:
-          searchType === 'MANUAL_ADDRESS' ? manualAddress.zipCode : undefined,
-        latitude:
-          searchType === 'CURRENT_LOCATION'
-            ? location?.latitude
-            : manualAddress.latitude || undefined,
-        longitude:
-          searchType === 'CURRENT_LOCATION'
-            ? location?.longitude
-            : manualAddress.longitude || undefined,
-        pickupReference: manualAddress.pickupReference || undefined,
+        latitude: location?.latitude,
+        longitude: location?.longitude,
       }),
     enabled: shouldEstimateSearchFee,
   });
@@ -282,8 +220,13 @@ export default function NewAppointmentPage() {
 
   const totalPrice = () => {
     const base = selectedRule ? selectedRule.basePriceInCents / 100 : 0;
-    const searchFee = (searchEstimate?.searchFeeInCents || 0) / 100;
-    return base + searchFee;
+
+    if (pickupDelivery && searchType === 'CURRENT_LOCATION') {
+      const searchFee = (searchEstimate?.searchFeeInCents || 0) / 100;
+      return base + searchFee;
+    }
+
+    return base;
   };
 
   const resetPickupState = () => {
@@ -330,6 +273,29 @@ export default function NewAppointmentPage() {
   const handleConfirm = () => {
     if (!serviceMode || !vehicleType || !selectedDate || !selectedSlot) return;
 
+    if (pickupDelivery && !searchType) {
+      toast.error('Escolha como deseja informar o local de busca');
+      return;
+    }
+
+    if (pickupDelivery && searchType === 'CURRENT_LOCATION' && !location) {
+      toast.error('Capture sua localização atual antes de confirmar');
+      return;
+    }
+
+    if (pickupDelivery && searchType === 'MANUAL_ADDRESS') {
+      if (
+        !manualAddress.streetAddress ||
+        !manualAddress.number ||
+        !manualAddress.neighborhood ||
+        !manualAddress.city ||
+        !manualAddress.state
+      ) {
+        toast.error('Preencha rua, número, bairro, cidade e estado');
+        return;
+      }
+    }
+
     const scheduledStartAt = `${format(
       selectedDate,
       'yyyy-MM-dd',
@@ -358,9 +324,6 @@ export default function NewAppointmentPage() {
         data.state = manualAddress.state;
         data.zipCode = manualAddress.zipCode;
         data.pickupReference = manualAddress.pickupReference;
-
-        if (manualAddress.latitude) data.latitude = manualAddress.latitude;
-        if (manualAddress.longitude) data.longitude = manualAddress.longitude;
       }
     }
 
@@ -770,36 +733,15 @@ export default function NewAppointmentPage() {
                           className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                         />
 
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            geocodeManualAddressMutation.mutate({
-                              streetAddress: manualAddress.streetAddress,
-                              number: manualAddress.number,
-                              neighborhood: manualAddress.neighborhood,
-                              city: manualAddress.city,
-                              state: manualAddress.state,
-                              zipCode: manualAddress.zipCode,
-                            })
-                          }
-                          disabled={
-                            geocodeManualAddressMutation.isPending ||
-                            !manualAddress.streetAddress ||
-                            !manualAddress.city ||
-                            !manualAddress.state
-                          }
-                        >
-                          {geocodeManualAddressMutation.isPending
-                            ? 'Validando...'
-                            : 'Validar endereço'}
-                        </Button>
-
-                        {manualAddress.validatedLabel && (
-                          <p className="text-xs text-muted-foreground">
-                            Endereço validado: {manualAddress.validatedLabel}
+                        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-muted-foreground">
+                          <p className="font-medium text-foreground">
+                            Taxa de busca a confirmar
                           </p>
-                        )}
+                          <p className="mt-1">
+                            Para endereço manual, a taxa pode variar conforme a
+                            distância.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -866,11 +808,11 @@ export default function NewAppointmentPage() {
                   {pickupDelivery && searchType === 'MANUAL_ADDRESS' && (
                     <SummaryRow
                       label="Local de busca"
-                      value={`${manualAddress.streetAddress}, ${manualAddress.number} - ${manualAddress.city}/${manualAddress.state}`}
+                      value={`${manualAddress.streetAddress}, ${manualAddress.number} - ${manualAddress.neighborhood} - ${manualAddress.city}/${manualAddress.state}`}
                     />
                   )}
 
-                  {pickupDelivery && (
+                  {pickupDelivery && searchType === 'CURRENT_LOCATION' && (
                     <>
                       <SummaryRow
                         label="Distância estimada"
@@ -891,6 +833,18 @@ export default function NewAppointmentPage() {
                         }
                       />
                     </>
+                  )}
+
+                  {pickupDelivery && searchType === 'MANUAL_ADDRESS' && (
+                    <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+                      <p className="text-sm font-medium text-foreground">
+                        Taxa de busca: A confirmar pela lavação
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Para endereço manual, a taxa pode variar conforme a
+                        distância.
+                      </p>
+                    </div>
                   )}
 
                   <div className="flex items-center justify-between border-t border-border pt-3">

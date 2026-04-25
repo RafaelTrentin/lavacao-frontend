@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import { adminApi, availabilityApi, serviceModesApi, vehicleTypesApi } from '@/lib/api';
+import {
+  adminApi,
+  availabilityApi,
+  serviceModesApi,
+  vehicleTypesApi,
+} from '@/lib/api';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -79,23 +84,30 @@ export default function AdminSchedulePage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
   const [pickupDelivery, setPickupDelivery] = useState(false);
-const [searchType, setSearchType] = useState<'CURRENT_LOCATION' | 'MANUAL_ADDRESS' | null>(null);
-const [manualAddress, setManualAddress] = useState({
-  streetAddress: '',
-  number: '',
-  city: '',
-  state: '',
-  pickupReference: '',
-});
-const [location, setLocation] = useState<{
-  latitude: number;
-  longitude: number;
-} | null>(null);
+  const [searchType, setSearchType] = useState<
+    'CURRENT_LOCATION' | 'MANUAL_ADDRESS' | null
+  >(null);
 
-const [showRescheduleModal, setShowRescheduleModal] = useState(false);
-const [rescheduleAppointment, setRescheduleAppointment] = useState<any | null>(null);
-const [rescheduleDate, setRescheduleDate] = useState<Date>(new Date());
-const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
+  const [manualAddress, setManualAddress] = useState({
+    streetAddress: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    pickupReference: '',
+  });
+
+  const [location, setLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleAppointment, setRescheduleAppointment] =
+    useState<any | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date>(new Date());
+  const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
 
   const formattedDate = format(date, 'yyyy-MM-dd');
 
@@ -129,8 +141,8 @@ const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
   });
 
   const { data: vehicleTypes = [], isLoading: loadingVehicleTypes } = useQuery({
-  queryKey: ['admin-vehicle-types'],
-  queryFn: vehicleTypesApi.listAdmin,
+    queryKey: ['admin-vehicle-types'],
+    queryFn: vehicleTypesApi.listAdmin,
   });
 
   const filteredModes = useMemo(() => {
@@ -142,8 +154,9 @@ const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
 
   const selectedMode = useMemo(
     () =>
-      (serviceModes as ServiceMode[]).find((mode) => mode.id === serviceModeId) ||
-      null,
+      (serviceModes as ServiceMode[]).find(
+        (mode) => mode.id === serviceModeId,
+      ) || null,
     [serviceModes, serviceModeId],
   );
 
@@ -166,102 +179,105 @@ const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
     enabled: !!serviceModeId && !!vehicleType && !!showCreatePanel,
   });
 
-  const { data: rescheduleSlots = [], isLoading: loadingRescheduleSlots } = useQuery({
-  queryKey: [
-    'admin-reschedule-slots',
-    rescheduleAppointment?.serviceModeId,
-    rescheduleAppointment?.vehicleType,
-    format(rescheduleDate, 'yyyy-MM-dd'),
-  ],
-  queryFn: () =>
-    availabilityApi.getSlots(
-      rescheduleAppointment!.serviceModeId,
-      rescheduleAppointment!.vehicleType,
-      format(rescheduleDate, 'yyyy-MM-dd'),
-    ),
-  enabled:
-    !!showRescheduleModal &&
-    !!rescheduleAppointment?.serviceModeId &&
-    !!rescheduleAppointment?.vehicleType,
-});
+  const { data: rescheduleSlots = [], isLoading: loadingRescheduleSlots } =
+    useQuery({
+      queryKey: [
+        'admin-reschedule-slots',
+        rescheduleAppointment?.serviceModeId,
+        rescheduleAppointment?.vehicleType,
+        format(rescheduleDate, 'yyyy-MM-dd'),
+      ],
+      queryFn: () =>
+        availabilityApi.getSlots(
+          rescheduleAppointment!.serviceModeId,
+          rescheduleAppointment!.vehicleType,
+          format(rescheduleDate, 'yyyy-MM-dd'),
+        ),
+      enabled:
+        !!showRescheduleModal &&
+        !!rescheduleAppointment?.serviceModeId &&
+        !!rescheduleAppointment?.vehicleType,
+    });
 
-const resetPickupState = () => {
-  setPickupDelivery(false);
-  setSearchType(null);
-  setLocation(null);
-  setManualAddress({
-    streetAddress: '',
-    number: '',
-    city: '',
-    state: '',
-    pickupReference: '',
-  });
-};
+  const resetPickupState = () => {
+    setPickupDelivery(false);
+    setSearchType(null);
+    setLocation(null);
+    setManualAddress({
+      streetAddress: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      pickupReference: '',
+    });
+  };
 
-const handleGetCurrentLocation = () => {
-  if (!navigator.geolocation) {
-    toast.error('Seu navegador não suporta geolocalização');
-    return;
-  }
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Seu navegador não suporta geolocalização');
+      return;
+    }
 
-  toast.info('Capturando localização atual...');
+    toast.info('Capturando localização atual...');
 
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
 
-      toast.success('Localização capturada. Confira antes de finalizar.');
-    },
-    (error) => {
-      if (error.code === error.PERMISSION_DENIED) {
-        toast.error('Permissão de localização negada');
-        return;
-      }
+        toast.success('Localização capturada. Confira antes de finalizar.');
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error('Permissão de localização negada');
+          return;
+        }
 
-      toast.error('Não foi possível capturar a localização');
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    },
-  );
-};
+        toast.error('Não foi possível capturar a localização');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      },
+    );
+  };
 
-const openRescheduleModal = (apt: any) => {
-  setRescheduleAppointment(apt);
-  setRescheduleDate(
-    apt.scheduledStartAt ? new Date(apt.scheduledStartAt) : new Date(),
-  );
-  setRescheduleSlot(null);
-  setShowRescheduleModal(true);
-};
+  const openRescheduleModal = (apt: any) => {
+    setRescheduleAppointment(apt);
+    setRescheduleDate(
+      apt.scheduledStartAt ? new Date(apt.scheduledStartAt) : new Date(),
+    );
+    setRescheduleSlot(null);
+    setShowRescheduleModal(true);
+  };
 
-const closeRescheduleModal = () => {
-  setShowRescheduleModal(false);
-  setRescheduleAppointment(null);
-  setRescheduleSlot(null);
-};
+  const closeRescheduleModal = () => {
+    setShowRescheduleModal(false);
+    setRescheduleAppointment(null);
+    setRescheduleSlot(null);
+  };
 
-const handleConfirmReschedule = () => {
-  if (!rescheduleAppointment || !rescheduleSlot) {
-    toast.error('Selecione um novo horário');
-    return;
-  }
+  const handleConfirmReschedule = () => {
+    if (!rescheduleAppointment || !rescheduleSlot) {
+      toast.error('Selecione um novo horário');
+      return;
+    }
 
-  const newScheduledStartAt = `${format(
-    rescheduleDate,
-    'yyyy-MM-dd',
-  )}T${rescheduleSlot.startTime}:00-03:00`;
+    const newScheduledStartAt = `${format(
+      rescheduleDate,
+      'yyyy-MM-dd',
+    )}T${rescheduleSlot.startTime}:00-03:00`;
 
-  rescheduleMutation.mutate({
-    id: rescheduleAppointment.id,
-    newScheduledStartAt,
-  });
-};
+    rescheduleMutation.mutate({
+      id: rescheduleAppointment.id,
+      newScheduledStartAt,
+    });
+  };
 
   const resetCreateForm = () => {
     setClientMode('existing');
@@ -391,35 +407,60 @@ const handleConfirmReschedule = () => {
       }
     }
 
+    if (pickupDelivery && !searchType) {
+      toast.error('Escolha como deseja informar o local de busca');
+      return;
+    }
+
+    if (pickupDelivery && searchType === 'CURRENT_LOCATION' && !location) {
+      toast.error('Capture a localização atual antes de criar o agendamento');
+      return;
+    }
+
+    if (pickupDelivery && searchType === 'MANUAL_ADDRESS') {
+      if (
+        !manualAddress.streetAddress ||
+        !manualAddress.number ||
+        !manualAddress.neighborhood ||
+        !manualAddress.city ||
+        !manualAddress.state
+      ) {
+        toast.error('Preencha rua, número, bairro, cidade e estado');
+        return;
+      }
+    }
+
     const scheduledStartAt = `${formattedDate}T${selectedSlot.startTime}:00-03:00`;
 
     const appointmentPayload: any = {
-  serviceModeId,
-  vehicleType,
-  scheduledStartAt,
-  willSearchVehicle: pickupDelivery,
-};
+      serviceModeId,
+      vehicleType,
+      scheduledStartAt,
+      willSearchVehicle: pickupDelivery,
+    };
 
-if (pickupDelivery) {
-  appointmentPayload.searchType = searchType;
+    if (pickupDelivery) {
+      appointmentPayload.searchType = searchType;
 
-  if (searchType === 'CURRENT_LOCATION' && location) {
-    appointmentPayload.latitude = location.latitude;
-    appointmentPayload.longitude = location.longitude;
-  }
+      if (searchType === 'CURRENT_LOCATION' && location) {
+        appointmentPayload.latitude = location.latitude;
+        appointmentPayload.longitude = location.longitude;
+      }
 
-  if (searchType === 'MANUAL_ADDRESS') {
-    appointmentPayload.streetAddress = manualAddress.streetAddress;
-    appointmentPayload.number = manualAddress.number;
-    appointmentPayload.city = manualAddress.city;
-    appointmentPayload.state = manualAddress.state;
-    appointmentPayload.pickupReference = manualAddress.pickupReference;
-  }
-}
+      if (searchType === 'MANUAL_ADDRESS') {
+        appointmentPayload.streetAddress = manualAddress.streetAddress;
+        appointmentPayload.number = manualAddress.number;
+        appointmentPayload.neighborhood = manualAddress.neighborhood;
+        appointmentPayload.city = manualAddress.city;
+        appointmentPayload.state = manualAddress.state;
+        appointmentPayload.zipCode = manualAddress.zipCode;
+        appointmentPayload.pickupReference = manualAddress.pickupReference;
+      }
+    }
 
     createAdminAppointmentMutation.mutate({
-    customerId,
-    appointment: appointmentPayload,
+      customerId,
+      appointment: appointmentPayload,
     });
   };
 
@@ -643,42 +684,42 @@ if (pickupDelivery) {
                 )}
 
                 <div className="space-y-2">
-  <label className="text-sm font-medium text-foreground">
-    Veículo
-  </label>
+                  <label className="text-sm font-medium text-foreground">
+                    Veículo
+                  </label>
 
-  {loadingVehicleTypes ? (
-    <div className="flex justify-center py-4">
-      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-    </div>
-  ) : vehicleTypes.length === 0 ? (
-    <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
-      Nenhum tipo de veículo cadastrado.
-    </div>
-  ) : (
-    <div className="grid grid-cols-2 gap-2">
-      {vehicleTypes.map((vt: VehicleTypeInfo) => (
-        <button
-          key={vt.id}
-          type="button"
-          onClick={() => {
-            setVehicleType(vt.kind);
-            setServiceModeId('');
-            setSelectedSlot(null);
-          }}
-          className={cn(
-            'rounded-xl border p-3 text-sm font-medium transition-all',
-            vehicleType === vt.kind
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background hover:border-primary/30',
-          )}
-        >
-          {vt.displayName}
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+                  {loadingVehicleTypes ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : vehicleTypes.length === 0 ? (
+                    <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                      Nenhum tipo de veículo cadastrado.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {vehicleTypes.map((vt: VehicleTypeInfo) => (
+                        <button
+                          key={vt.id}
+                          type="button"
+                          onClick={() => {
+                            setVehicleType(vt.kind);
+                            setServiceModeId('');
+                            setSelectedSlot(null);
+                          }}
+                          className={cn(
+                            'rounded-xl border p-3 text-sm font-medium transition-all',
+                            vehicleType === vt.kind
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-background hover:border-primary/30',
+                          )}
+                        >
+                          {vt.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
@@ -717,185 +758,227 @@ if (pickupDelivery) {
                     })}
                   </select>
                 </div>
-                    <div className="space-y-4 rounded-2xl border border-border bg-background p-4">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      <Truck className="h-5 w-5 text-primary" />
-      <div>
-        <p className="text-sm font-medium text-foreground">
-          Busca e entrega
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Ative se precisar buscar o veículo
-        </p>
-      </div>
-    </div>
 
-    <Switch
-      checked={pickupDelivery}
-      onCheckedChange={(value) => {
-        setPickupDelivery(value);
-        if (!value) {
-          setSearchType(null);
-          setLocation(null);
-          setManualAddress({
-            streetAddress: '',
-            number: '',
-            city: '',
-            state: '',
-            pickupReference: '',
-          });
-        }
-      }}
-    />
-  </div>
+                <div className="space-y-4 rounded-2xl border border-border bg-background p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Truck className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          Busca e entrega
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Ative se precisar buscar o veículo
+                        </p>
+                      </div>
+                    </div>
 
-  {pickupDelivery && (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setSearchType('CURRENT_LOCATION');
-            setManualAddress((prev) => ({
-              ...prev,
-              streetAddress: '',
-              number: '',
-              city: '',
-              state: '',
-            }));
-          }}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all',
-            searchType === 'CURRENT_LOCATION'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background hover:border-primary/30',
-          )}
-        >
-          <MapPin className="h-4 w-4" />
-          Localização atual
-        </button>
+                    <Switch
+                      checked={pickupDelivery}
+                      onCheckedChange={(value) => {
+                        setPickupDelivery(value);
+                        if (!value) {
+                          setSearchType(null);
+                          setLocation(null);
+                          setManualAddress({
+                            streetAddress: '',
+                            number: '',
+                            neighborhood: '',
+                            city: '',
+                            state: '',
+                            zipCode: '',
+                            pickupReference: '',
+                          });
+                        }
+                      }}
+                    />
+                  </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setSearchType('MANUAL_ADDRESS');
-            setLocation(null);
-          }}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all',
-            searchType === 'MANUAL_ADDRESS'
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border bg-background hover:border-primary/30',
-          )}
-        >
-          <MapPinned className="h-4 w-4" />
-          Digitar endereço
-        </button>
-      </div>
+                  {pickupDelivery && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchType('CURRENT_LOCATION');
+                            setManualAddress((prev) => ({
+                              ...prev,
+                              streetAddress: '',
+                              number: '',
+                              neighborhood: '',
+                              city: '',
+                              state: '',
+                              zipCode: '',
+                            }));
+                          }}
+                          className={cn(
+                            'flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all',
+                            searchType === 'CURRENT_LOCATION'
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-background hover:border-primary/30',
+                          )}
+                        >
+                          <MapPin className="h-4 w-4" />
+                          Localização atual
+                        </button>
 
-      {searchType === 'CURRENT_LOCATION' && (
-        <div className="space-y-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleGetCurrentLocation}
-          >
-            Usar localização atual
-          </Button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchType('MANUAL_ADDRESS');
+                            setLocation(null);
+                          }}
+                          className={cn(
+                            'flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all',
+                            searchType === 'MANUAL_ADDRESS'
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-background hover:border-primary/30',
+                          )}
+                        >
+                          <MapPinned className="h-4 w-4" />
+                          Digitar endereço
+                        </button>
+                      </div>
 
-          {location && (
-          <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground space-y-1">
-            <p>Localização capturada com sucesso.</p>
-            <p className="text-xs">
-              Lat: {location.latitude.toFixed(6)} • Lng: {location.longitude.toFixed(6)}
-            </p>
-                <a
-                  href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-primary hover:underline"
-                >
-                  <MapPinned className="h-3.5 w-3.5" />
-                    Conferir no Maps
-                </a>
-          </div>
-        )}
-        </div>
-      )}
+                      {searchType === 'CURRENT_LOCATION' && (
+                        <div className="space-y-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            onClick={handleGetCurrentLocation}
+                          >
+                            Usar localização atual
+                          </Button>
 
-      {searchType === 'MANUAL_ADDRESS' && (
-        <div className="space-y-3">
-          <input
-            type="text"
-            placeholder="Rua"
-            value={manualAddress.streetAddress}
-            onChange={(e) =>
-              setManualAddress((prev) => ({
-                ...prev,
-                streetAddress: e.target.value,
-              }))
-            }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+                          {location && (
+                            <div className="space-y-1 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                              <p>Localização capturada com sucesso.</p>
+                              <p className="text-xs">
+                                Lat: {location.latitude.toFixed(6)} • Lng:{' '}
+                                {location.longitude.toFixed(6)}
+                              </p>
+                              <a
+                                href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline"
+                              >
+                                <MapPinned className="h-3.5 w-3.5" />
+                                Conferir no Maps
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
-          <input
-            type="text"
-            placeholder="Número"
-            value={manualAddress.number}
-            onChange={(e) =>
-              setManualAddress((prev) => ({
-                ...prev,
-                number: e.target.value,
-              }))
-            }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+                      {searchType === 'MANUAL_ADDRESS' && (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            placeholder="Rua"
+                            value={manualAddress.streetAddress}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                streetAddress: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
 
-          <input
-            type="text"
-            placeholder="Cidade"
-            value={manualAddress.city}
-            onChange={(e) =>
-              setManualAddress((prev) => ({
-                ...prev,
-                city: e.target.value,
-              }))
-            }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+                          <input
+                            type="text"
+                            placeholder="Número"
+                            value={manualAddress.number}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                number: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
 
-          <input
-            type="text"
-            placeholder="Estado"
-            value={manualAddress.state}
-            onChange={(e) =>
-              setManualAddress((prev) => ({
-                ...prev,
-                state: e.target.value,
-              }))
-            }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
+                          <input
+                            type="text"
+                            placeholder="Bairro"
+                            value={manualAddress.neighborhood}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                neighborhood: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
 
-          <input
-            type="text"
-            placeholder="Ponto de referência (opcional)"
-            value={manualAddress.pickupReference}
-            onChange={(e) =>
-              setManualAddress((prev) => ({
-                ...prev,
-                pickupReference: e.target.value,
-              }))
-            }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-      )}
-    </div>
-  )}
-</div>              
+                          <input
+                            type="text"
+                            placeholder="Cidade"
+                            value={manualAddress.city}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                city: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="Estado"
+                            value={manualAddress.state}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                state: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="CEP"
+                            value={manualAddress.zipCode}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                zipCode: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="Ponto de referência (opcional)"
+                            value={manualAddress.pickupReference}
+                            onChange={(e) =>
+                              setManualAddress((prev) => ({
+                                ...prev,
+                                pickupReference: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                          />
+
+                          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-muted-foreground">
+                            <p className="font-medium text-foreground">
+                              Taxa de busca a confirmar
+                            </p>
+                            <p className="mt-1">
+                              Para endereço manual, a taxa pode variar conforme
+                              a distância.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -977,6 +1060,18 @@ if (pickupDelivery) {
                         ? `R$ ${(selectedRule.basePriceInCents / 100).toFixed(2)}`
                         : '-'}
                     </p>
+
+                    {pickupDelivery && searchType === 'MANUAL_ADDRESS' && (
+                      <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs leading-relaxed text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          Taxa de busca: A confirmar pela lavação
+                        </p>
+                        <p className="mt-1">
+                          Para endereço manual, a taxa pode variar conforme a
+                          distância.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1029,10 +1124,12 @@ if (pickupDelivery) {
             {appointmentsData.map((apt) => {
               const status = STATUS_MAP[apt.status] || STATUS_MAP.CONFIRMED;
 
-              const start =
-                apt.scheduledStartAt ? new Date(apt.scheduledStartAt) : null;
-              const end =
-                apt.scheduledEndAt ? new Date(apt.scheduledEndAt) : null;
+              const start = apt.scheduledStartAt
+                ? new Date(apt.scheduledStartAt)
+                : null;
+              const end = apt.scheduledEndAt
+                ? new Date(apt.scheduledEndAt)
+                : null;
 
               const customerName =
                 apt.customer?.name || apt.client?.name || 'Cliente';
@@ -1044,8 +1141,11 @@ if (pickupDelivery) {
                 'Serviço';
 
               const vehicleLabel =
-                  vehicleTypes.find((v: VehicleTypeInfo) => v.kind === apt.vehicleType)
-                    ?.displayName || apt.vehicleType || '-';
+                vehicleTypes.find(
+                  (v: VehicleTypeInfo) => v.kind === apt.vehicleType,
+                )?.displayName ||
+                apt.vehicleType ||
+                '-';
 
               const totalPrice =
                 typeof apt.snapshotTotalPriceInCents === 'number'
@@ -1056,6 +1156,14 @@ if (pickupDelivery) {
 
               const mapsLink = getMapsLink(apt);
               const locationLabel = getLocationLabel(apt);
+
+              const isManualPickupAddress =
+                apt.searchType === 'MANUAL_ADDRESS' ||
+                apt.snapshotSearchType === 'MANUAL_ADDRESS' ||
+                (!!apt.snapshotAddressLine &&
+                  apt.snapshotAddressLine !== 'Localização atual' &&
+                  !apt.snapshotLatitude &&
+                  !apt.snapshotLongitude);
 
               return (
                 <div
@@ -1104,9 +1212,15 @@ if (pickupDelivery) {
                                 {apt.snapshotAddressNumber
                                   ? `, ${apt.snapshotAddressNumber}`
                                   : ''}
+                                {apt.snapshotNeighborhood
+                                  ? ` - ${apt.snapshotNeighborhood}`
+                                  : ''}
                                 {apt.snapshotCity ? ` - ${apt.snapshotCity}` : ''}
                                 {apt.snapshotState
                                   ? `/${apt.snapshotState}`
+                                  : ''}
+                                {apt.snapshotZipCode
+                                  ? ` • CEP ${apt.snapshotZipCode}`
                                   : ''}
                               </p>
                             )}
@@ -1115,6 +1229,18 @@ if (pickupDelivery) {
                             <p className="text-muted-foreground">
                               📝 Ref: {apt.snapshotPickupReference}
                             </p>
+                          )}
+
+                          {isManualPickupAddress && (
+                            <div className="rounded-lg border border-warning/30 bg-warning/10 p-2 text-xs text-muted-foreground">
+                              <p className="font-medium text-foreground">
+                                Taxa de busca: A confirmar pela lavação
+                              </p>
+                              <p className="mt-0.5">
+                                Para endereço manual, a taxa pode variar
+                                conforme a distância.
+                              </p>
+                            </div>
                           )}
 
                           {mapsLink && (
@@ -1133,7 +1259,7 @@ if (pickupDelivery) {
                     </div>
                   </div>
 
-                  <div className="text-right space-y-2">
+                  <div className="space-y-2 text-right">
                     <span
                       className={cn(
                         'rounded-full px-2.5 py-1 text-xs font-medium',
@@ -1148,44 +1274,44 @@ if (pickupDelivery) {
                     </p>
 
                     <div className="mt-2 flex flex-wrap justify-end gap-2">
-  {apt.status === 'CONFIRMED' && (
-    <>
-      <button
-        onClick={() => startMutation.mutate(apt.id)}
-        disabled={startMutation.isPending}
-        className="rounded-full bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-      >
-        Iniciar
-      </button>
+                      {apt.status === 'CONFIRMED' && (
+                        <>
+                          <button
+                            onClick={() => startMutation.mutate(apt.id)}
+                            disabled={startMutation.isPending}
+                            className="rounded-full bg-blue-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                          >
+                            Iniciar
+                          </button>
 
-      <button
-        onClick={() => openRescheduleModal(apt)}
-        disabled={rescheduleMutation.isPending}
-        className="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-      >
-        Reagendar
-      </button>
+                          <button
+                            onClick={() => openRescheduleModal(apt)}
+                            disabled={rescheduleMutation.isPending}
+                            className="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                          >
+                            Reagendar
+                          </button>
 
-      <button
-        onClick={() => cancelMutation.mutate(apt.id)}
-        disabled={cancelMutation.isPending}
-        className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-      >
-        Cancelar
-      </button>
-    </>
-  )}
+                          <button
+                            onClick={() => cancelMutation.mutate(apt.id)}
+                            disabled={cancelMutation.isPending}
+                            className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
 
-  {apt.status === 'IN_PROGRESS' && (
-    <button
-      onClick={() => completeMutation.mutate(apt.id)}
-      disabled={completeMutation.isPending}
-      className="rounded-full bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-    >
-      Concluir
-    </button>
-  )}
-</div>
+                      {apt.status === 'IN_PROGRESS' && (
+                        <button
+                          onClick={() => completeMutation.mutate(apt.id)}
+                          disabled={completeMutation.isPending}
+                          className="rounded-full bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                        >
+                          Concluir
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1193,120 +1319,129 @@ if (pickupDelivery) {
           </div>
         )}
       </div>
+
       {showRescheduleModal && rescheduleAppointment && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-    <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Reagendar Agendamento
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Escolha uma nova data e horário disponível.
-          </p>
-        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Reagendar Agendamento
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Escolha uma nova data e horário disponível.
+                </p>
+              </div>
 
-        <Button variant="ghost" size="sm" onClick={closeRescheduleModal}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-border bg-background p-3">
-          <Calendar
-            mode="single"
-            selected={rescheduleDate}
-            onSelect={(d) => {
-              if (d) {
-                setRescheduleDate(d);
-                setRescheduleSlot(null);
-              }
-            }}
-            locale={ptBR}
-            className="pointer-events-auto"
-          />
-        </div>
-
-        <div className="space-y-3 min-w-0">
-          <p className="text-sm font-medium text-foreground">
-            Horários disponíveis
-          </p>
-
-          {loadingRescheduleSlots ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Button variant="ghost" size="sm" onClick={closeRescheduleModal}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          ) : (rescheduleSlots as TimeSlot[]).length === 0 ? (
-            <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
-              Nenhum horário disponível nesta data.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
-              {(rescheduleSlots as TimeSlot[]).map((slot) => (
-                <button
-                  key={slot.startTime}
-                  type="button"
-                  onClick={() => setRescheduleSlot(slot)}
-                  className={cn(
-                    'rounded-xl border-2 py-3 text-sm font-medium transition-all',
-                    rescheduleSlot?.startTime === slot.startTime
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-card text-foreground hover:border-primary/30',
-                  )}
-                >
-                  {slot.startTime}
-                </button>
-              ))}
-            </div>
-          )}
 
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <p className="text-sm font-medium text-foreground">Resumo</p>
-            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <p>
-                <span className="font-medium text-foreground">Cliente:</span>{' '}
-                {rescheduleAppointment.customer?.name ||
-                  rescheduleAppointment.client?.name ||
-                  'Cliente'}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Serviço:</span>{' '}
-                {rescheduleAppointment.snapshotServiceModeName ||
-                  rescheduleAppointment.serviceMode?.name ||
-                  'Serviço'}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Nova data:</span>{' '}
-                {format(rescheduleDate, 'dd/MM/yyyy')}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Novo horário:</span>{' '}
-                {rescheduleSlot?.displayLabel || '-'}
-              </p>
+            <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+              <div className="rounded-2xl border border-border bg-background p-3">
+                <Calendar
+                  mode="single"
+                  selected={rescheduleDate}
+                  onSelect={(d) => {
+                    if (d) {
+                      setRescheduleDate(d);
+                      setRescheduleSlot(null);
+                    }
+                  }}
+                  locale={ptBR}
+                  className="pointer-events-auto"
+                />
+              </div>
+
+              <div className="min-w-0 space-y-3">
+                <p className="text-sm font-medium text-foreground">
+                  Horários disponíveis
+                </p>
+
+                {loadingRescheduleSlots ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : (rescheduleSlots as TimeSlot[]).length === 0 ? (
+                  <div className="rounded-xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                    Nenhum horário disponível nesta data.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
+                    {(rescheduleSlots as TimeSlot[]).map((slot) => (
+                      <button
+                        key={slot.startTime}
+                        type="button"
+                        onClick={() => setRescheduleSlot(slot)}
+                        className={cn(
+                          'rounded-xl border-2 py-3 text-sm font-medium transition-all',
+                          rescheduleSlot?.startTime === slot.startTime
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-card text-foreground hover:border-primary/30',
+                        )}
+                      >
+                        {slot.startTime}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-border bg-background p-4">
+                  <p className="text-sm font-medium text-foreground">Resumo</p>
+                  <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Cliente:
+                      </span>{' '}
+                      {rescheduleAppointment.customer?.name ||
+                        rescheduleAppointment.client?.name ||
+                        'Cliente'}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Serviço:
+                      </span>{' '}
+                      {rescheduleAppointment.snapshotServiceModeName ||
+                        rescheduleAppointment.serviceMode?.name ||
+                        'Serviço'}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Nova data:
+                      </span>{' '}
+                      {format(rescheduleDate, 'dd/MM/yyyy')}
+                    </p>
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Novo horário:
+                      </span>{' '}
+                      {rescheduleSlot?.displayLabel || '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={closeRescheduleModal}>
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={handleConfirmReschedule}
+                disabled={rescheduleMutation.isPending}
+              >
+                {rescheduleMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Confirmar Reagendamento'
+                )}
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={closeRescheduleModal}>
-          Cancelar
-        </Button>
-
-        <Button
-          onClick={handleConfirmReschedule}
-          disabled={rescheduleMutation.isPending}
-        >
-          {rescheduleMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            'Confirmar Reagendamento'
-          )}
-        </Button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </AdminLayout>
   );
 }
