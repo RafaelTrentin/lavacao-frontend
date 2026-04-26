@@ -91,6 +91,9 @@ export default function LoginPage({
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             {branding.name || 'WashSync'}
           </h1>
+          <p className="mt-2 rounded bg-red-500 px-3 py-1 text-xs font-bold text-white">
+  TESTE LOGIN NOVO
+</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Faça login para continuar na sua conta
           </p>
