@@ -476,23 +476,6 @@ export default function AdminSchedulePage() {
   return `https://www.google.com/maps?q=${apt.snapshotLatitude},${apt.snapshotLongitude}`;
 };
 
-    const addressParts = [
-      apt.snapshotAddressLine,
-      apt.snapshotAddressNumber,
-      apt.snapshotNeighborhood,
-      apt.snapshotCity,
-      apt.snapshotState,
-      apt.snapshotZipCode,
-    ].filter(Boolean);
-
-    if (addressParts.length > 0) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        addressParts.join(', '),
-      )}`;
-    }
-
-    return null;
-  };
 
   const getLocationLabel = (apt: any) => {
     if (
