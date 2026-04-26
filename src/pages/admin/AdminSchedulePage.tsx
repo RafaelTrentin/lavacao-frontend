@@ -465,15 +465,16 @@ export default function AdminSchedulePage() {
   };
 
   const getMapsLink = (apt: any) => {
-    const hasCoords =
-      apt.snapshotLatitude !== null &&
-      apt.snapshotLatitude !== undefined &&
-      apt.snapshotLongitude !== null &&
-      apt.snapshotLongitude !== undefined;
+  const hasCoords =
+    apt.snapshotLatitude !== null &&
+    apt.snapshotLatitude !== undefined &&
+    apt.snapshotLongitude !== null &&
+    apt.snapshotLongitude !== undefined;
 
-    if (hasCoords) {
-      return `https://www.google.com/maps?q=${apt.snapshotLatitude},${apt.snapshotLongitude}`;
-    }
+  if (!hasCoords) return null;
+
+  return `https://www.google.com/maps?q=${apt.snapshotLatitude},${apt.snapshotLongitude}`;
+};
 
     const addressParts = [
       apt.snapshotAddressLine,
