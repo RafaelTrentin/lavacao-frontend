@@ -476,24 +476,23 @@ export default function AdminSchedulePage() {
   return `https://www.google.com/maps?q=${apt.snapshotLatitude},${apt.snapshotLongitude}`;
 };
 
+const getLocationLabel = (apt: any) => {
+  if (
+    apt.snapshotLatitude !== null &&
+    apt.snapshotLatitude !== undefined &&
+    apt.snapshotLongitude !== null &&
+    apt.snapshotLongitude !== undefined &&
+    !apt.snapshotAddressLine
+  ) {
+    return 'Localização atual';
+  }
 
-  const getLocationLabel = (apt: any) => {
-    if (
-      apt.snapshotLatitude !== null &&
-      apt.snapshotLatitude !== undefined &&
-      apt.snapshotLongitude !== null &&
-      apt.snapshotLongitude !== undefined &&
-      !apt.snapshotAddressLine
-    ) {
-      return 'Localização atual';
-    }
+  if (apt.snapshotAddressLine === 'Localização atual') {
+    return 'Localização atual';
+  }
 
-    if (apt.snapshotAddressLine === 'Localização atual') {
-      return 'Localização atual';
-    }
-
-    return null;
-  };
+  return null;
+};
 
   const appointmentsData = appointments as any[];
   const clientsData = clients as any[];
