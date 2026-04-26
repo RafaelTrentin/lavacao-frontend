@@ -42,19 +42,28 @@ export default function LoginPage({
       const routeSlug = adminMode ? undefined : slug || '';
       await login(email.trim(), password.trim(), routeSlug);
 
-      await sleep(50);
+await sleep(100);
 
-      const savedUser = getStoredUser();
-      const savedSlug =
-        localStorage.getItem('washsync_business_slug') || businessSlug || slug;
+const savedUser = getStoredUser();
+const savedSlug =
+  localStorage.getItem('washsync_business_slug') || businessSlug || slug;
 
-      if (savedUser?.role === 'ADMIN') {
-        navigate('/admin', { replace: true });
-      } else if (savedSlug) {
-        navigate(`/empresa/${savedSlug}`, { replace: true });
-      } else {
-        navigate('/admin/login', { replace: true });
-      }
+if (adminMode) {
+  navigate('/admin', { replace: true });
+  return;
+}
+
+if (savedUser?.role === 'ADMIN') {
+  navigate('/admin', { replace: true });
+  return;
+}
+
+if (savedSlug) {
+  navigate(`/empresa/${savedSlug}`, { replace: true });
+  return;
+}
+
+navigate('/admin/login', { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Email ou senha inválidos');
     } finally {
@@ -63,33 +72,54 @@ export default function LoginPage({
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-cyan-50 via-white to-sky-100 px-4 py-10">
-      {/* Gotas decorativas no fundo */}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-cyan-100 via-sky-50 to-blue-200 px-4 py-10">
+      {/* Gotas decorativas — maiores, mais visíveis e realistas */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {/* Gota grande superior esquerda */}
         <motion.div
-          className="absolute left-[8%] top-[10%] h-8 w-8 rounded-full bg-gradient-to-br from-white to-sky-200/50 ring-1 ring-white shadow-lg shadow-sky-200/40"
-          animate={{ y: [0, -12, 0] }}
+          className="absolute left-[8%] top-[8%] h-20 w-20 rounded-full bg-gradient-to-br from-white/90 via-white/40 to-cyan-200/30 ring-2 ring-white/70 shadow-xl shadow-sky-300/40 backdrop-blur-sm"
+          animate={{ y: [0, -16, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
+        {/* Brilho dentro da gota grande */}
         <motion.div
-          className="absolute right-[10%] top-[18%] h-6 w-6 rounded-full bg-gradient-to-br from-white to-sky-200/40 ring-1 ring-white shadow-md"
-          animate={{ y: [0, -10, 0] }}
+          className="absolute left-[10%] top-[9%] h-5 w-5 rounded-full bg-white/90 blur-sm"
+          animate={{ y: [0, -16, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        {/* Gota média superior direita */}
+        <motion.div
+          className="absolute right-[8%] top-[14%] h-14 w-14 rounded-full bg-gradient-to-br from-white/80 via-white/30 to-sky-200/30 ring-2 ring-white/60 shadow-lg shadow-sky-300/40 backdrop-blur-sm"
+          animate={{ y: [0, -12, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
         />
+
+        {/* Gota pequena meio-esquerda */}
         <motion.div
-          className="absolute left-[12%] top-[55%] h-10 w-10 rounded-full bg-gradient-to-br from-white to-sky-200/40 ring-1 ring-white shadow-lg"
-          animate={{ y: [0, -14, 0] }}
+          className="absolute left-[6%] top-[45%] h-10 w-10 rounded-full bg-gradient-to-br from-white/80 to-cyan-200/30 ring-1 ring-white/70 shadow-md shadow-sky-300/30 backdrop-blur-sm"
+          animate={{ y: [0, -10, 0] }}
           transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
         />
+
+        {/* Gota grande inferior direita */}
         <motion.div
-          className="absolute bottom-[15%] right-[8%] h-12 w-12 rounded-full bg-gradient-to-br from-white to-sky-200/40 ring-1 ring-white shadow-lg"
-          animate={{ y: [0, -16, 0] }}
+          className="absolute bottom-[12%] right-[6%] h-24 w-24 rounded-full bg-gradient-to-br from-white/85 via-white/35 to-sky-200/30 ring-2 ring-white/60 shadow-xl shadow-sky-300/40 backdrop-blur-sm"
+          animate={{ y: [0, -18, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
         />
+        {/* Brilho dentro da gota grande inferior */}
         <motion.div
-          className="absolute bottom-[25%] left-[6%] h-5 w-5 rounded-full bg-gradient-to-br from-white to-sky-200/40 ring-1 ring-white"
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+          className="absolute bottom-[20%] right-[12%] h-6 w-6 rounded-full bg-white/90 blur-sm"
+          animate={{ y: [0, -18, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+        />
+
+        {/* Gota pequena inferior esquerda */}
+        <motion.div
+          className="absolute bottom-[20%] left-[10%] h-8 w-8 rounded-full bg-gradient-to-br from-white/80 to-sky-200/30 ring-1 ring-white/70 shadow-md backdrop-blur-sm"
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
         />
       </div>
 
@@ -99,37 +129,37 @@ export default function LoginPage({
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        {/* Card glassmorphism */}
-        <div className="rounded-3xl border border-white/60 bg-white/40 p-7 shadow-2xl shadow-sky-200/40 backdrop-blur-xl sm:p-8">
+        {/* Card glassmorphism mais translúcido */}
+        <div className="rounded-3xl border border-white/70 bg-white/30 p-8 shadow-2xl shadow-sky-300/30 backdrop-blur-2xl sm:p-10">
           {/* Logo + título */}
-          <div className="mb-6 flex flex-col items-center text-center">
+          <div className="mb-8 flex flex-col items-center text-center">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.4 }}
-              className="mb-3 flex h-24 w-24 items-center justify-center"
+              className="mb-4 flex h-28 w-28 items-center justify-center"
             >
               <img
                 src={branding.logoUrl || '/WashSync-Logo.png'}
                 alt={branding.name || 'WashSync'}
-                className="h-full w-full object-contain drop-shadow-md"
+                className="h-full w-full object-contain drop-shadow-lg"
               />
             </motion.div>
 
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               {branding.name || 'WashSync'}
             </h1>
-            <p className="mt-1 text-xs font-medium text-slate-500">
+            <p className="mt-2 text-sm font-medium text-slate-600">
               Sistema de Gestão para Lava-Jatos
             </p>
-            <p className="mt-4 text-sm text-slate-600">
+            <p className="mt-6 text-base text-slate-700">
               Faça login para continuar
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Input Email com label flutuante */}
-            <div className="group relative rounded-2xl border border-white/80 bg-white/60 px-4 py-2.5 shadow-sm transition-all focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/30">
+            {/* Input Email */}
+            <div className="group relative rounded-2xl border border-white/80 bg-white/70 px-4 py-3 shadow-sm transition-all focus-within:border-cyan-400 focus-within:bg-white/90 focus-within:ring-2 focus-within:ring-cyan-400/30">
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 shrink-0 text-cyan-600" />
                 <div className="flex-1">
@@ -156,8 +186,8 @@ export default function LoginPage({
               </div>
             </div>
 
-            {/* Input Senha com label flutuante */}
-            <div className="group relative rounded-2xl border border-white/80 bg-white/60 px-4 py-2.5 shadow-sm transition-all focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-400/30">
+            {/* Input Senha */}
+            <div className="group relative rounded-2xl border border-white/80 bg-white/70 px-4 py-3 shadow-sm transition-all focus-within:border-cyan-400 focus-within:bg-white/90 focus-within:ring-2 focus-within:ring-cyan-400/30">
               <div className="flex items-center gap-3">
                 <Lock className="h-5 w-5 shrink-0 text-cyan-600" />
                 <div className="flex-1">
@@ -184,7 +214,7 @@ export default function LoginPage({
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-red-200 bg-red-50/80 px-3 py-2.5 text-sm font-medium text-red-600"
+                className="rounded-xl border border-red-200 bg-red-50/90 px-3 py-2.5 text-sm font-medium text-red-600"
               >
                 {error}
               </motion.p>
@@ -192,7 +222,7 @@ export default function LoginPage({
 
             <Button
               type="submit"
-              className="group h-12 w-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-600 text-base font-semibold text-white shadow-lg shadow-blue-500/40 transition-all hover:shadow-xl hover:shadow-blue-500/50 active:scale-[0.98]"
+              className="group mt-2 h-14 w-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-blue-600 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/40 transition-all hover:shadow-xl hover:shadow-blue-500/50 active:scale-[0.98]"
               disabled={loading}
             >
               {loading ? (
@@ -206,7 +236,7 @@ export default function LoginPage({
             </Button>
 
             {!adminMode && (
-              <p className="pt-1 text-center text-sm text-slate-600">
+              <p className="pt-2 text-center text-sm text-slate-700">
                 Ainda não tem conta?{' '}
                 <Link
                   to={`/empresa/${slug}/register`}
