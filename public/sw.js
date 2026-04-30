@@ -9,7 +9,7 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     data: {
-      url: data.url || '/notifications',
+      url: data.url || data.clickUrl || '/my-appointments',
     },
   };
 
@@ -19,7 +19,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const url = event.notification.data?.url || '/notifications';
+  const url = event.notification.data?.url || '/my-appointments';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
