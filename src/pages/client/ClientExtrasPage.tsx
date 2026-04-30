@@ -1,3 +1,4 @@
+// src/pages/ClientExtrasPage.tsx
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -8,11 +9,14 @@ import {
   ArrowRight,
   X,
   Image as ImageIcon,
+  Info,
 } from 'lucide-react';
 
 import ClientLayout from '@/components/layouts/ClientLayout';
 import { extraServicesApi, adminApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import type { ExtraService } from '@/types';
 
 export default function ClientExtrasPage() {
@@ -44,48 +48,98 @@ export default function ClientExtrasPage() {
   return (
     <ClientLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Serviços Extras
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Serviços especiais disponíveis sob consulta
-          </p>
-        </div>
+        {/* Cabeçalho premium */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-background to-background p-5 sm:p-6"
+        >
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative space-y-2">
+            <Badge variant="secondary" className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Serviços especiais
+            </Badge>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Extras para seu veículo
+            </h1>
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Serviços sob consulta atendidos diretamente pela lavação via
+              WhatsApp. Toque em um serviço para ver mais detalhes.
+            </p>
+          </div>
+        </motion.div>
 
+        {/* Conteúdo */}
         {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="overflow-hidden rounded-2xl border border-border bg-card"
+              >
+                <div className="h-44 w-full animate-pulse bg-muted" />
+                <div className="space-y-2 p-4">
+                  <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            ))}
+            <div className="col-span-full flex justify-center pt-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
           </div>
         ) : extras.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card py-16 text-center">
-            <Sparkles className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-            <p className="text-muted-foreground">Nenhum serviço disponível</p>
+          <div className="rounded-3xl border border-dashed border-border bg-card/60 py-16 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <Sparkles className="h-7 w-7 text-primary" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">
+              Nenhum serviço extra disponível
+            </h3>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+              Em breve a lavação poderá disponibilizar novos serviços
+              especiais aqui.
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {extras.map((extra) => (
-              <button
+              <motion.button
                 key={extra.id}
                 type="button"
                 onClick={() => setSelectedExtra(extra)}
-                className="w-full overflow-hidden rounded-2xl border border-border bg-card text-left shadow-card transition-all hover:border-primary/30 hover:shadow-elevated"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                className="group relative w-full overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
               >
-                {extra.imageUrl ? (
-                  <img
-                    src={extra.imageUrl}
-                    alt={extra.name}
-                    className="h-44 w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-44 items-center justify-center bg-muted">
-                    <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                )}
+                <div className="relative">
+                  {extra.imageUrl ? (
+                    <img
+                      src={extra.imageUrl}
+                      alt={extra.name}
+                      className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                  ) : (
+                    <div className="flex h-44 items-center justify-center bg-gradient-to-br from-muted to-muted/40">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground/70" />
+                    </div>
+                  )}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+                  <Badge
+                    variant="secondary"
+                    className="absolute left-3 top-3 gap-1 bg-background/90 backdrop-blur"
+                  >
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Extra
+                  </Badge>
+                </div>
 
                 <div className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <h3 className="font-semibold text-foreground">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-semibold text-foreground">
                       {extra.name}
                     </h3>
                     {extra.description && (
@@ -93,86 +147,112 @@ export default function ClientExtrasPage() {
                         {extra.description}
                       </p>
                     )}
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                      Ver detalhes
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-
-                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
       </div>
 
+      {/* Modal / Bottom sheet */}
       <AnimatePresence>
         {selectedExtra && (
           <motion.div
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-4"
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedExtra(null)}
           >
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 60 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, y: 60 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-card shadow-card"
+              className="w-full max-w-lg overflow-hidden rounded-t-3xl border border-border bg-card shadow-xl sm:rounded-3xl"
             >
-              {selectedExtra.imageUrl ? (
-                <img
-                  src={selectedExtra.imageUrl}
-                  alt={selectedExtra.name}
-                  className="h-56 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-56 items-center justify-center bg-muted">
-                  <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                </div>
-              )}
+              {/* Handle do bottom sheet (mobile) */}
+              <div className="flex justify-center pt-2 sm:hidden">
+                <div className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+              </div>
 
-              <div className="p-5">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {selectedExtra.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Serviço atendido externamente via WhatsApp
-                    </p>
+              <div className="relative">
+                {selectedExtra.imageUrl ? (
+                  <img
+                    src={selectedExtra.imageUrl}
+                    alt={selectedExtra.name}
+                    className="h-56 w-full object-cover sm:h-64"
+                  />
+                ) : (
+                  <div className="flex h-56 items-center justify-center bg-gradient-to-br from-muted to-muted/40 sm:h-64">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground/70" />
                   </div>
+                )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedExtra(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => setSelectedExtra(null)}
+                  className="absolute right-3 top-3 h-9 w-9 rounded-full bg-background/90 backdrop-blur hover:bg-background"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+
+                <Badge
+                  variant="secondary"
+                  className="absolute left-3 top-3 gap-1 bg-background/90 backdrop-blur"
+                >
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Serviço especial
+                </Badge>
+              </div>
+
+              <div className="p-5 sm:p-6">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                    {selectedExtra.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Atendimento personalizado via WhatsApp
+                  </p>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-background p-4">
+                <Separator className="my-4" />
+
+                <div className="rounded-2xl bg-muted/50 p-4">
                   <p className="text-sm leading-relaxed text-foreground">
                     {selectedExtra.description || 'Sem descrição informada.'}
                   </p>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                {!settings?.whatsappPhone && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>WhatsApp não configurado pela lavação.</span>
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
                   <Button
-                    className="flex-1 gap-2"
+                    variant="outline"
+                    onClick={() => setSelectedExtra(null)}
+                    className="sm:flex-1"
+                  >
+                    Fechar
+                  </Button>
+                  <Button
+                    className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md hover:from-emerald-600 hover:to-emerald-700 sm:flex-1"
                     onClick={() => openWhatsApp(selectedExtra.name)}
                     disabled={!settings?.whatsappPhone}
                   >
                     <MessageCircle className="h-4 w-4" />
                     Falar no WhatsApp
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedExtra(null)}
-                  >
-                    Fechar
                   </Button>
                 </div>
               </div>
