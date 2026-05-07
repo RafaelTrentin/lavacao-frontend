@@ -34,10 +34,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('washsync_token');
-      const slug = getCurrentBusinessSlugFromPath();
-        window.location.href = slug ? `/empresa/${slug}/login` : '/';
-    }
+  localStorage.removeItem('washsync_token');
+  localStorage.removeItem('washsync_user');
+
+  const slug =
+    getCurrentBusinessSlugFromPath() ||
+    localStorage.getItem('washsync_business_slug');
+
+  window.location.href = slug ? `/empresa/${slug}/login` : '/app';
+}
     return Promise.reject(error);
   },
 );

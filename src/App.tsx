@@ -23,6 +23,9 @@ import AdminVehicleTypesPage from './pages/admin/AdminVehicleTypesPage';
 import ClientExtrasPage from '@/pages/client/ClientExtrasPage';
 import RegisterPage from '@/pages/RegisterPage';
 import RootRedirect from './pages/RootRedirect';
+import AppEntryPage from '@/pages/AppEntryPage';
+import AppSelectBusinessPage from '@/pages/AppSelectBusinessPage';
+import AppChangeBusinessPage from '@/pages/AppChangeBusinessPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +51,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />
+
+      <Route path="/app" element={<AppEntryPage />} />
+      <Route path="/app/selecionar-empresa" element={<AppSelectBusinessPage />} />
+      <Route path="/app/trocar-lavacao" element={<AppChangeBusinessPage />} />
 
       <Route
         path="/empresa/:slug/login"
