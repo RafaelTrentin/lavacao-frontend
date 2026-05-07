@@ -33,6 +33,11 @@ function isStandaloneMode(): boolean {
   return Boolean(mql?.matches) || iosStandalone;
 }
 
+function isAndroidDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -124,16 +129,21 @@ export default function ClientHomePage() {
   }, []);
 
   const handleInstallApp = async () => {
-    if (!deferredPrompt) return;
+  if (!deferredPrompt) {
+    toast.info(
+      'No Android, toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar à tela inicial".',
+    );
+    return;
+  }
 
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
+  await deferredPrompt.prompt();
+  const choice = await deferredPrompt.userChoice;
 
-    if (choice.outcome === 'accepted') {
-      setShowInstallBanner(false);
-      setDeferredPrompt(null);
-    }
-  };
+  if (choice.outcome === 'accepted') {
+    setShowInstallBanner(false);
+    setDeferredPrompt(null);
+  }
+};
 
   const handleEnablePush = async () => {
     try {
@@ -267,7 +277,7 @@ export default function ClientHomePage() {
           </motion.div>
 
           {/* BANNER INSTALAR APP */}
-          {showInstallBanner && !isStandaloneMode() && (
+          {!isStandaloneMode() && (showInstallBanner || isAndroidDevice()) && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
