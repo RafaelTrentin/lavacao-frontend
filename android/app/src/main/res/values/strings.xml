@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WashSync</string>
+    <string name="title_activity_main">WashSync</string>
+    <string name="package_name">br.com.washsync.app</string>
+    <string name="custom_url_scheme">br.com.washsync.app</string>
+</resources>
