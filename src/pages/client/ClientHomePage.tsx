@@ -38,6 +38,21 @@ function isAndroidDevice(): boolean {
   return /Android/i.test(navigator.userAgent);
 }
 
+function isNativeCapacitorApp(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const capacitor = (window as any).Capacitor;
+  const isCapacitorNative =
+    typeof capacitor?.isNativePlatform === 'function' &&
+    capacitor.isNativePlatform();
+
+  return (
+    Boolean(isCapacitorNative) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.origin === 'https://localhost'
+  );
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -108,7 +123,7 @@ export default function ClientHomePage() {
     const handler = (e: Event) => {
       e.preventDefault();
 
-      if (isStandaloneMode()) return;
+      if (isStandaloneMode() || isNativeCapacitorApp()) return;
 
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowInstallBanner(true);
@@ -129,21 +144,21 @@ export default function ClientHomePage() {
   }, []);
 
   const handleInstallApp = async () => {
-  if (!deferredPrompt) {
-    toast.info(
-      'No Android, toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar à tela inicial".',
-    );
-    return;
-  }
+    if (!deferredPrompt) {
+      toast.info(
+        'No Android, toque no menu ⋮ do navegador e escolha "Instalar app" ou "Adicionar à tela inicial".',
+      );
+      return;
+    }
 
-  await deferredPrompt.prompt();
-  const choice = await deferredPrompt.userChoice;
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
 
-  if (choice.outcome === 'accepted') {
-    setShowInstallBanner(false);
-    setDeferredPrompt(null);
-  }
-};
+    if (choice.outcome === 'accepted') {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    }
+  };
 
   const handleEnablePush = async () => {
     try {
@@ -173,283 +188,310 @@ export default function ClientHomePage() {
   const firstName =
     ((profileData as any)?.name || (user as any)?.name || 'Cliente').split(' ')[0];
 
+  const shouldShowInstallBanner =
+    !isNativeCapacitorApp() &&
+    !isStandaloneMode() &&
+    (showInstallBanner || isAndroidDevice());
+
   return (
     <ClientLayout>
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
-        {/* HERO */}
-        <motion.section
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="relative overflow-hidden"
-        >
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent" />
-
-          <div className="relative mx-auto max-w-5xl px-5 pb-10 pt-8 md:px-10 md:pt-12">
-            <Badge variant="secondary" className="mb-4 gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              Bem-vindo de volta
-            </Badge>
-
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-              Olá, {firstName} 👋
-            </h1>
-
-            <p className="mt-2 text-sm text-muted-foreground md:text-base">
-              Pronto para deixar seu carro impecável? Agende em segundos.
-            </p>
-          </div>
-        </motion.section>
-
-        <div className="mx-auto max-w-5xl space-y-6 px-5 pb-12 md:px-10">
-          {/* AÇÕES RÁPIDAS */}
+      <div className="min-h-screen bg-[#f7f8fb]">
+        <div className="mx-auto max-w-5xl px-5 pb-24 pt-5 md:px-10 md:pt-8">
+          {/* HERO LIMPO */}
           <motion.section
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.05 }}
-            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            transition={{ duration: 0.35 }}
+            className="mb-5"
           >
-            <Link to={`${basePath}/new-appointment`} className="group">
-              <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-                    <CalendarPlus className="h-6 w-6" />
-                  </div>
+            <div className="rounded-[28px] border border-white bg-white p-5 shadow-sm">
+              <Badge
+                variant="secondary"
+                className="mb-3 gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Bem-vindo de volta
+              </Badge>
 
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-wider opacity-80">
-                      Ação principal
-                    </p>
-                    <p className="text-lg font-semibold">Novo agendamento</p>
-                  </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">
+                Olá, {firstName} 👋
+              </h1>
 
-                  <ChevronRight className="h-5 w-5 opacity-80 transition-transform group-hover:translate-x-1" />
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to={`${basePath}/my-appointments`} className="group">
-              <Card className="h-full border-border/60 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <CalendarDays className="h-6 w-6" />
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Histórico
-                    </p>
-                    <p className="text-lg font-semibold">Meus agendamentos</p>
-                  </div>
-
-                  <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                </CardContent>
-              </Card>
-            </Link>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-500 md:text-base">
+                Agende, acompanhe seus horários e veja os serviços disponíveis
+                em poucos toques.
+              </p>
+            </div>
           </motion.section>
 
-          {/* CARD: SERVIÇOS ESPECIAIS */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.15 }}
-          >
-            <Link to={`${basePath}/extras`} className="block">
-              <Card className="group relative overflow-hidden border-border/60 bg-gradient-to-br from-amber-50 to-orange-50 transition-all hover:shadow-md dark:from-amber-950/20 dark:to-orange-950/20">
-                <div className="flex items-center gap-4 p-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Serviços especiais
-                    </h3>
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
-                      Conheça extras e tratamentos premium
-                    </p>
-                  </div>
-
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </Card>
-            </Link>
-          </motion.div>
-
-          {/* BANNER INSTALAR APP */}
-          {!isStandaloneMode() && (showInstallBanner || isAndroidDevice()) && (
-            <motion.div
+          <div className="space-y-4">
+            {/* AÇÕES PRINCIPAIS */}
+            <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.35, delay: 0.05 }}
+              className="grid grid-cols-1 gap-3 md:grid-cols-2"
             >
-              <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Smartphone className="h-6 w-6" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">Instale o app</p>
-                    <p className="text-sm text-muted-foreground">
-                      Acesso rápido direto da sua tela inicial.
-                    </p>
-                  </div>
-
-                  <Button onClick={handleInstallApp} size="sm">
-                    Instalar
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* BANNER ATIVAR PUSH */}
-          {!checkingPushStatus && !pushEnabled && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Card className="border-amber-500/30 bg-amber-500/5">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                    <BellRing className="h-6 w-6" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">Ative as notificações</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receba lembretes e atualizações dos seus agendamentos.
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handleEnablePush}
-                    disabled={enablingPush}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {enablingPush ? 'Ativando...' : 'Ativar'}
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* CENTRO DE NOTIFICAÇÕES */}
-          <motion.section
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.1 }}
-          >
-            <Card className="border-border/60">
-              <CardContent className="p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Bell className="h-4 w-4" />
+              <Link to={`${basePath}/new-appointment`} className="group">
+                <Card className="overflow-hidden border-0 bg-slate-950 text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-white">
+                      <CalendarPlus className="h-6 w-6" />
                     </div>
 
-                    <div>
-                      <p className="font-semibold leading-tight">Notificações</p>
-                      <p className="text-xs text-muted-foreground">
-                        {unreadCount > 0
-                          ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}`
-                          : 'Tudo em dia'}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+                        Principal
+                      </p>
+                      <p className="mt-0.5 text-lg font-semibold">
+                        Novo agendamento
+                      </p>
+                      <p className="mt-0.5 text-xs text-white/55">
+                        Reserve seu horário
                       </p>
                     </div>
-                  </div>
 
-                  {unreadCount > 0 && (
-                    <Badge variant="default" className="rounded-full">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </div>
+                    <ChevronRight className="h-5 w-5 text-white/55 transition-transform group-hover:translate-x-1" />
+                  </CardContent>
+                </Card>
+              </Link>
 
-                <Separator className="mb-4" />
-
-                {notifications.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                      <Bell className="h-5 w-5 text-muted-foreground" />
+              <Link to={`${basePath}/my-appointments`} className="group">
+                <Card className="h-full border-0 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-800">
+                      <CalendarDays className="h-6 w-6" />
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      Nenhuma notificação por enquanto.
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {notifications.slice(0, 3).map((item: any) => (
-                      <li
-                        key={item.id}
-                        className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
-                          item.isRead
-                            ? 'border-border/40 bg-background'
-                            : 'border-primary/30 bg-primary/5'
-                        }`}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Histórico
+                      </p>
+                      <p className="mt-0.5 text-lg font-semibold text-slate-950">
+                        Meus agendamentos
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Status e horários
+                      </p>
+                    </div>
+
+                    <ChevronRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-1" />
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.section>
+
+            {/* SERVIÇOS ESPECIAIS */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.1 }}
+            >
+              <Link to={`${basePath}/extras`} className="group block">
+                <Card className="border border-amber-100 bg-amber-50/70 shadow-sm transition-all hover:shadow-md">
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-sm">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-950">
+                        Serviços especiais
+                      </p>
+                      <p className="line-clamp-1 text-xs text-slate-500">
+                        Extras e tratamentos premium
+                      </p>
+                    </div>
+
+                    <ChevronRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* CONFIGURAÇÕES / AVISOS */}
+            {(shouldShowInstallBanner ||
+              (!checkingPushStatus && !pushEnabled)) && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.15 }}
+                className="space-y-3"
+              >
+                {shouldShowInstallBanner && (
+                  <Card className="border border-slate-200 bg-white shadow-sm">
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                        <Smartphone className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-950">
+                          Instale o app
+                        </p>
+                        <p className="line-clamp-2 text-xs text-slate-500">
+                          Acesso rápido direto da tela inicial.
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={handleInstallApp}
+                        size="sm"
+                        className="h-9 rounded-xl bg-slate-950 px-4 text-xs text-white hover:bg-slate-800"
                       >
-                        <div
-                          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                        Instalar
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {!checkingPushStatus && !pushEnabled && (
+                  <Card className="border border-amber-100 bg-white shadow-sm">
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                        <BellRing className="h-5 w-5" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-950">
+                          Ative notificações
+                        </p>
+                        <p className="line-clamp-2 text-xs text-slate-500">
+                          Receba lembretes e atualizações.
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={handleEnablePush}
+                        disabled={enablingPush}
+                        size="sm"
+                        variant="outline"
+                        className="h-9 rounded-xl px-4 text-xs"
+                      >
+                        {enablingPush ? 'Ativando...' : 'Ativar'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </motion.section>
+            )}
+
+            {/* NOTIFICAÇÕES */}
+            <motion.section
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.2 }}
+            >
+              <Card className="border-0 bg-white shadow-sm">
+                <CardContent className="p-5">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+                        <Bell className="h-4 w-4" />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold leading-tight text-slate-950">
+                          Notificações
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {unreadCount > 0
+                            ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}`
+                            : 'Tudo em dia'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {unreadCount > 0 && (
+                      <Badge className="rounded-full bg-slate-950 text-white hover:bg-slate-950">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <Separator className="mb-4" />
+
+                  {notifications.length === 0 ? (
+                    <div className="py-6 text-center">
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                        <Bell className="h-5 w-5 text-slate-400" />
+                      </div>
+
+                      <p className="text-sm text-slate-500">
+                        Nenhuma notificação por enquanto.
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {notifications.slice(0, 3).map((item: any) => (
+                        <li
+                          key={item.id}
+                          className={`flex items-start gap-3 rounded-2xl border p-3 transition-colors ${
                             item.isRead
-                              ? 'bg-muted text-muted-foreground'
-                              : 'bg-primary/15 text-primary'
+                              ? 'border-slate-100 bg-slate-50/60'
+                              : 'border-primary/20 bg-primary/5'
                           }`}
                         >
-                          {item.isRead ? (
-                            <CheckCircle2 className="h-4 w-4" />
-                          ) : (
-                            <Clock className="h-4 w-4" />
-                          )}
-                        </div>
+                          <div
+                            className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                              item.isRead
+                                ? 'bg-white text-slate-400'
+                                : 'bg-primary/10 text-primary'
+                            }`}
+                          >
+                            {item.isRead ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
+                          </div>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {item.title || 'Notificação'}
-                          </p>
-
-                          {(item.message || item.body) && (
-                            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                              {item.message || item.body}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-950">
+                              {item.title || 'Notificação'}
                             </p>
+
+                            {(item.message || item.body) && (
+                              <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                                {item.message || item.body}
+                              </p>
+                            )}
+                          </div>
+
+                          {!item.isRead && (
+                            <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
                           )}
-                        </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.section>
 
-                        {!item.isRead && (
-                          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </motion.section>
+            {/* DICA */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.25 }}
+            >
+              <Card className="border border-dashed border-slate-200 bg-white/70 shadow-sm">
+                <CardContent className="flex items-start gap-3 p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <Lightbulb className="h-4 w-4" />
+                  </div>
 
-          {/* CARD: DICA */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.25 }}
-          >
-            <Card className="border-dashed border-border/70 bg-muted/30">
-              <div className="flex items-start gap-3 p-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                  <Lightbulb className="h-4 w-4" />
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Dica</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                    Agende com antecedência para garantir o melhor horário e evitar
-                    a espera nos finais de semana.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-950">Dica</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                      Agende com antecedência para garantir o melhor horário e
+                      evitar a espera nos finais de semana.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
         </div>
       </div>
     </ClientLayout>
