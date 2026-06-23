@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/layouts/AdminLayout';
-import { extraServicesApi, adminApi } from '@/lib/api';
+import { extraServicesApi } from '@/lib/api';
 import type { ExtraService } from '@/types';
 import {
   Sparkles,
@@ -40,6 +40,10 @@ export default function AdminExtrasPage() {
   const { data: extras = [], isLoading } = useQuery({
     queryKey: ['admin-extras'],
     queryFn: extraServicesApi.list,
+  });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: extraServicesApi.uploadImage,
   });
 
   const createMutation = useMutation({
@@ -105,6 +109,23 @@ export default function AdminExtrasPage() {
     setForm(emptyForm());
   };
 
+  const handleUploadImage = async (file: File) => {
+    try {
+      const res = await uploadImageMutation.mutateAsync(file);
+
+      setForm((prev) => ({
+        ...prev,
+        imageUrl: res.url,
+      }));
+
+      toast.success('Imagem enviada com sucesso');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || 'Erro ao enviar imagem';
+      toast.error(Array.isArray(message) ? message.join(', ') : message);
+    }
+  };
+
   const handleSave = () => {
     if (!form.name.trim()) {
       toast.error('Informe o nome do serviço extra');
@@ -114,7 +135,7 @@ export default function AdminExtrasPage() {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || undefined,
-      imageUrl: form.imageUrl || undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
       isActive: form.isActive,
     };
 
@@ -128,7 +149,11 @@ export default function AdminExtrasPage() {
     }
   };
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    uploadImageMutation.isPending;
+
   const sortedExtras = useMemo(() => extras, [extras]);
 
   return (
@@ -207,28 +232,31 @@ export default function AdminExtrasPage() {
 
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={uploadImageMutation.isPending}
                   onChange={async (e) => {
-                    const file = e.target.files?.[0];
+                    const input = e.currentTarget;
+                    const file = input.files?.[0];
+
                     if (!file) return;
 
-                    try {
-                      const res = await adminApi.uploadLogo(file);
-                      setForm((prev) => ({
-                        ...prev,
-                        imageUrl: res.url,
-                      }));
-                      toast.success('Imagem enviada com sucesso');
-                    } catch {
-                      toast.error('Erro ao enviar imagem');
-                    }
+                    await handleUploadImage(file);
+
+                    input.value = '';
                   }}
                   className="text-sm"
                 />
 
-                  <p className="text-xs text-muted-foreground">
-                    Recomendado: imagem horizontal em 1200 x 800 px, nos formatos JPG ou PNG.
-                  </p>
+                <p className="text-xs text-muted-foreground">
+                  Recomendado: imagem horizontal em 1200 x 800 px, nos formatos JPG, PNG ou WEBP.
+                </p>
+
+                {uploadImageMutation.isPending && (
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Enviando imagem...
+                  </div>
+                )}
 
                 {form.imageUrl && (
                   <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-background">

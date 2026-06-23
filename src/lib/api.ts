@@ -17,6 +17,15 @@ import type {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+type UploadImageResponse = {
+  url: string;
+  filename: string;
+  publicId?: string;
+  contentType: string;
+  size: number;
+  businessId: string;
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -34,15 +43,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-  localStorage.removeItem('washsync_token');
-  localStorage.removeItem('washsync_user');
+      localStorage.removeItem('washsync_token');
+      localStorage.removeItem('washsync_user');
 
-  const slug =
-    getCurrentBusinessSlugFromPath() ||
-    localStorage.getItem('washsync_business_slug');
+      const slug =
+        getCurrentBusinessSlugFromPath() ||
+        localStorage.getItem('washsync_business_slug');
 
-  window.location.href = slug ? `/empresa/${slug}/login` : '/app';
-}
+      window.location.href = slug ? `/empresa/${slug}/login` : '/app';
+    }
+
     return Promise.reject(error);
   },
 );
@@ -55,9 +65,9 @@ function getCurrentBusinessSlugFromPath() {
 // AUTH
 export const authApi = {
   login: (email: string, password: string, businessSlug?: string) =>
-  api
-    .post<AuthResponse>('/auth/login', { email, password, businessSlug })
-    .then((r) => r.data),
+    api
+      .post<AuthResponse>('/auth/login', { email, password, businessSlug })
+      .then((r) => r.data),
 
   signup: (data: SignupDTO) =>
     api.post<AuthResponse>('/auth/signup', data).then((r) => r.data),
@@ -146,6 +156,17 @@ export const extraServicesApi = {
   createRequest: (data: { extraServiceId: string; description?: string }) =>
     api.post('/extra-services/requests', data).then((r) => r.data),
 
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return api
+      .post<UploadImageResponse>('/extra-services/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
+
   create: (data: Partial<ExtraService>) =>
     api.post<ExtraService>('/extra-services', data).then((r) => r.data),
 
@@ -201,23 +222,22 @@ export const appointmentsApi = {
       })
       .then((r) => r.data),
 
-      estimateSearchFee: (data: {
-  serviceModeId: string;
-  vehicleType: string;
-  willSearchVehicle: boolean;
-  searchType?: string;
-  serviceAddressId?: string;
-  streetAddress?: string;
-  number?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  latitude?: number;
-  longitude?: number;
-  pickupReference?: string;
-}) => api.post('/appointments/estimate-search-fee', data).then((r) => r.data),
-
+  estimateSearchFee: (data: {
+    serviceModeId: string;
+    vehicleType: string;
+    willSearchVehicle: boolean;
+    searchType?: string;
+    serviceAddressId?: string;
+    streetAddress?: string;
+    number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    latitude?: number;
+    longitude?: number;
+    pickupReference?: string;
+  }) => api.post('/appointments/estimate-search-fee', data).then((r) => r.data),
 };
 
 // ADMIN
@@ -307,33 +327,32 @@ export const adminApi = {
     longitude?: number;
   }) => api.put('/business/address', data).then((r) => r.data),
 
-uploadLogo: (file: File) => {
-  const formData = new FormData();
-  formData.append('file', file);
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-  return api
-    .post('/business/upload-logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    .then((r) => r.data);
-},
+    return api
+      .post<UploadImageResponse>('/business/upload-logo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
 
   geocodeBusinessAddress: (data: {
-  streetAddress: string;
-  number?: string;
-  neighborhood?: string;
-  city: string;
-  state: string;
-  zipCode?: string;
-}) => api.post('/business/geocode-address', data).then((r) => r.data),
+    streetAddress: string;
+    number?: string;
+    neighborhood?: string;
+    city: string;
+    state: string;
+    zipCode?: string;
+  }) => api.post('/business/geocode-address', data).then((r) => r.data),
 
-topCustomersByPeriod: (period: 'WEEK' | 'MONTH') =>
-  api
-    .get('/admin/dashboard/top-customers-period', {
-      params: { period },
-    })
-    .then((r) => r.data),
-
+  topCustomersByPeriod: (period: 'WEEK' | 'MONTH') =>
+    api
+      .get('/admin/dashboard/top-customers-period', {
+        params: { period },
+      })
+      .then((r) => r.data),
 };
 
 export const mapsApi = {
@@ -353,7 +372,7 @@ export const customersApi = {
 
   updateProfile: (data: {
     name?: string;
-    phone?: string;
+    phone: string;
     preferredContactMethod?: string;
     email?: string;
   }) => api.put<CustomerProfile>('/customers/profile', data).then((r) => r.data),
@@ -375,15 +394,19 @@ export const notificationsApi = {
 
 export const pushNotificationsApi = {
   getPublicKey: () =>
-    api.get<{ publicKey: string }>('/push-notifications/public-key').then((r) => r.data),
+    api
+      .get<{ publicKey: string }>('/push-notifications/public-key')
+      .then((r) => r.data),
 
   subscribe: (subscription: PushSubscriptionJSON) =>
     api.post('/push-notifications/subscribe', subscription).then((r) => r.data),
 
   unsubscribe: (endpoint: string) =>
-    api.delete('/push-notifications/unsubscribe', {
-      data: { endpoint },
-    }).then((r) => r.data),
+    api
+      .delete('/push-notifications/unsubscribe', {
+        data: { endpoint },
+      })
+      .then((r) => r.data),
 };
 
 export const publicBusinessApi = {
