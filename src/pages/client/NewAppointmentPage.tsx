@@ -20,6 +20,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Geolocation } from '@capacitor/geolocation';
 
 import ClientLayout from '@/components/layouts/ClientLayout';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,21 @@ const STEP_DESCRIPTIONS = [
 
 type SearchTypeOption = 'CURRENT_LOCATION' | 'MANUAL_ADDRESS' | null;
 
+function isNativeCapacitorApp(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const capacitor = (window as any).Capacitor;
+  const isCapacitorNative =
+    typeof capacitor?.isNativePlatform === 'function' &&
+    capacitor.isNativePlatform();
+
+  return (
+    Boolean(isCapacitorNative) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.origin === 'https://localhost'
+  );
+}
+
 export default function NewAppointmentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -87,6 +103,8 @@ export default function NewAppointmentPage() {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  const [capturingLocation, setCapturingLocation] = useState(false);
 
   const { data: serviceModes = [], isLoading: loadingModes } = useQuery({
     queryKey: ['service-modes'],
@@ -203,12 +221,18 @@ export default function NewAppointmentPage() {
 
   const canAdvance = () => {
     switch (step) {
-      case 0: return !!vehicleType;
-      case 1: return !!serviceMode;
-      case 2: return !!selectedDate;
-      case 3: return !!selectedSlot;
-      case 4: return true;
-      default: return false;
+      case 0:
+        return !!vehicleType;
+      case 1:
+        return !!serviceMode;
+      case 2:
+        return !!selectedDate;
+      case 3:
+        return !!selectedSlot;
+      case 4:
+        return true;
+      default:
+        return false;
     }
   };
 
@@ -233,28 +257,79 @@ export default function NewAppointmentPage() {
     setSearchType(null);
     setLocation(null);
     setManualAddress({
-      streetAddress: '', number: '', neighborhood: '', city: '',
-      state: '', zipCode: '', pickupReference: '',
-      latitude: null, longitude: null, validatedLabel: '',
+      streetAddress: '',
+      number: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      pickupReference: '',
+      latitude: null,
+      longitude: null,
+      validatedLabel: '',
     });
   };
 
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Seu navegador não suporta geolocalização');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+  const handleGetCurrentLocation = async () => {
+    try {
+      setCapturingLocation(true);
+
+      if (isNativeCapacitorApp()) {
+        const permissions = await Geolocation.checkPermissions();
+
+        if (permissions.location !== 'granted') {
+          const requested = await Geolocation.requestPermissions();
+
+          if (requested.location !== 'granted') {
+            toast.error('Permissão de localização negada');
+            return;
+          }
+        }
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+
         setLocation({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
+
         toast.success('Localização capturada com sucesso');
-      },
-      () => toast.error('Não foi possível capturar sua localização'),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        toast.error('Seu navegador não suporta geolocalização');
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+            toast.success('Localização capturada com sucesso');
+            resolve();
+          },
+          (error) => {
+            reject(error);
+          },
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+      });
+    } catch (error: any) {
+      const message =
+        error?.message ||
+        'Não foi possível capturar sua localização. Verifique as permissões do aparelho.';
+
+      toast.error(message);
+    } finally {
+      setCapturingLocation(false);
+    }
   };
 
   const handleConfirm = () => {
@@ -270,8 +345,11 @@ export default function NewAppointmentPage() {
     }
     if (pickupDelivery && searchType === 'MANUAL_ADDRESS') {
       if (
-        !manualAddress.streetAddress || !manualAddress.number ||
-        !manualAddress.neighborhood || !manualAddress.city || !manualAddress.state
+        !manualAddress.streetAddress ||
+        !manualAddress.number ||
+        !manualAddress.neighborhood ||
+        !manualAddress.city ||
+        !manualAddress.state
       ) {
         toast.error('Preencha rua, número, bairro, cidade e estado');
         return;
@@ -318,7 +396,10 @@ export default function NewAppointmentPage() {
         <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
           {/* Hero / identidade */}
           <div className="space-y-2 text-center sm:text-left">
-            <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider">
+            <Badge
+              variant="secondary"
+              className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider"
+            >
               <Sparkles className="mr-1 h-3 w-3" />
               Novo agendamento
             </Badge>
@@ -728,9 +809,19 @@ export default function NewAppointmentPage() {
                                 variant="outline"
                                 className="w-full"
                                 onClick={handleGetCurrentLocation}
+                                disabled={capturingLocation}
                               >
-                                <MapPin className="mr-2 h-4 w-4" />
-                                Usar minha localização atual
+                                {capturingLocation ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Capturando localização...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="mr-2 h-4 w-4" />
+                                    Usar minha localização atual
+                                  </>
+                                )}
                               </Button>
                               {location && (
                                 <div className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-foreground">

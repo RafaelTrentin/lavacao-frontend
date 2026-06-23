@@ -47,12 +47,13 @@ export default function ClientLayout({
   };
 
   return (
-    <div className="app-shell flex flex-col bg-background">
-      <header className="safe-area-top shrink-0 border-b border-border bg-card/80 backdrop-blur-md">
+    <div className="flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-background">
+      {/* HEADER */}
+      <header className="shrink-0 border-b border-border bg-card/95 pt-[env(safe-area-inset-top)] shadow-sm backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <div
-              className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl ${
                 branding.logoUrl ? 'bg-transparent' : 'gradient-primary'
               }`}
             >
@@ -67,17 +68,18 @@ export default function ClientLayout({
               )}
             </div>
 
-            <span className="text-lg font-bold tracking-tight text-foreground">
+            <span className="truncate text-base font-bold tracking-tight text-foreground">
               {branding.name || 'WashSync'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Link
               to={`${basePath}/notifications`}
-              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
+              aria-label="Notificações"
+              className="relative rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
             >
-              <Bell className="h-4.5 w-4.5" />
+              <Bell className="h-5 w-5" />
               {(unreadData?.count || 0) > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
                   {unreadData!.count > 9 ? '9+' : unreadData!.count}
@@ -86,36 +88,43 @@ export default function ClientLayout({
             </Link>
 
             <button
+              type="button"
               onClick={handleLogout}
-              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
+              aria-label="Sair"
+              className="rounded-xl p-2.5 text-muted-foreground transition-colors hover:bg-muted active:bg-muted"
             >
-              <LogOut className="h-4.5 w-4.5" />
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="app-scroll min-h-0 flex-1">
-        <div className="mx-auto w-full max-w-lg px-4 py-5">
+      {/* CONTEÚDO ROLÁVEL */}
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#f7f8fb]">
+        <div className="mx-auto w-full max-w-lg px-4 py-5 pb-8">
           {children}
         </div>
       </main>
 
-      <nav className="safe-area-bottom shrink-0 border-t border-border bg-card/90 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-lg items-center justify-around px-2 py-2">
+      {/* MENU INFERIOR */}
+      <nav className="shrink-0 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-md">
+        <div className="mx-auto grid w-full max-w-lg grid-cols-5 items-center px-2 py-2">
           {navItems.map((item) => {
             const active = location.pathname === item.path;
+            const Icon = item.icon;
 
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 transition-colors ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-colors active:bg-muted ${
                   active ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="max-w-full truncate text-[10px] font-medium leading-none">
+                  {item.label}
+                </span>
               </Link>
             );
           })}

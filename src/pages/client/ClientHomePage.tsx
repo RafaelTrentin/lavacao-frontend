@@ -64,6 +64,7 @@ export default function ClientHomePage() {
   const queryClient = useQueryClient();
 
   const basePath = slug ? `/empresa/${slug}` : '';
+  const nativeApp = isNativeCapacitorApp();
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [enablingPush, setEnablingPush] = useState(false);
@@ -98,6 +99,7 @@ export default function ClientHomePage() {
 
     (async () => {
       try {
+        if (nativeApp) return;
         if (typeof window === 'undefined') return;
         if (!('serviceWorker' in navigator)) return;
         if (!('PushManager' in window)) return;
@@ -117,7 +119,7 @@ export default function ClientHomePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nativeApp]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -161,6 +163,8 @@ export default function ClientHomePage() {
   };
 
   const handleEnablePush = async () => {
+    if (nativeApp) return;
+
     try {
       setEnablingPush(true);
 
@@ -189,14 +193,17 @@ export default function ClientHomePage() {
     ((profileData as any)?.name || (user as any)?.name || 'Cliente').split(' ')[0];
 
   const shouldShowInstallBanner =
-    !isNativeCapacitorApp() &&
+    !nativeApp &&
     !isStandaloneMode() &&
     (showInstallBanner || isAndroidDevice());
 
+  const shouldShowPushBanner =
+    !nativeApp && !checkingPushStatus && !pushEnabled;
+
   return (
     <ClientLayout>
-      <div className="min-h-screen bg-[#f7f8fb]">
-        <div className="mx-auto max-w-5xl px-5 pb-24 pt-5 md:px-10 md:pt-8">
+      <div className="bg-[#f7f8fb]">
+        <div className="mx-auto max-w-5xl px-1 pb-4 pt-0 md:px-6 md:pt-2">
           {/* HERO LIMPO */}
           <motion.section
             initial={{ opacity: 0, y: -8 }}
@@ -310,8 +317,7 @@ export default function ClientHomePage() {
             </motion.div>
 
             {/* CONFIGURAÇÕES / AVISOS */}
-            {(shouldShowInstallBanner ||
-              (!checkingPushStatus && !pushEnabled)) && (
+            {(shouldShowInstallBanner || shouldShowPushBanner) && (
               <motion.section
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -345,7 +351,7 @@ export default function ClientHomePage() {
                   </Card>
                 )}
 
-                {!checkingPushStatus && !pushEnabled && (
+                {shouldShowPushBanner && (
                   <Card className="border border-amber-100 bg-white shadow-sm">
                     <CardContent className="flex items-center gap-3 p-4">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
