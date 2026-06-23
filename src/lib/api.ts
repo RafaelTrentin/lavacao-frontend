@@ -409,9 +409,29 @@ export const pushNotificationsApi = {
       .then((r) => r.data),
 };
 
+export type PublicBusinessSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string | null;
+  iconUrl?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  accentColor?: string | null;
+  city?: string | null;
+  state?: string | null;
+};
+
 export const publicBusinessApi = {
   getBySlug: (slug: string) =>
-    api.get(`/public/business/empresa/${slug}`).then((r) => r.data),
+    api.get<PublicBusinessSummary>(`/public/business/empresa/${slug}`).then((r) => r.data),
+
+  search: (query: string) =>
+    api
+      .get<PublicBusinessSummary[]>('/public/business/search', {
+        params: { q: query },
+      })
+      .then((r) => r.data),
 };
 
 export default api;
