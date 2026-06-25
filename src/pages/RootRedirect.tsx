@@ -9,10 +9,27 @@ function getStoredUser() {
   }
 }
 
+function isNativeCapacitorApp() {
+  if (typeof window === 'undefined') return false;
+
+  const capacitor = (window as any).Capacitor;
+
+  const isCapacitorNative =
+    typeof capacitor?.isNativePlatform === 'function' &&
+    capacitor.isNativePlatform();
+
+  return (
+    Boolean(isCapacitorNative) ||
+    window.location.protocol === 'capacitor:' ||
+    window.location.origin === 'https://localhost'
+  );
+}
+
 export default function RootRedirect() {
   const slug = localStorage.getItem('washsync_business_slug');
   const token = localStorage.getItem('washsync_token');
   const user = getStoredUser();
+  const isApp = isNativeCapacitorApp();
 
   // Admin logado
   if (token && user?.role === 'ADMIN') {
@@ -28,6 +45,11 @@ export default function RootRedirect() {
     return <Navigate to={`/empresa/${slug}/login`} replace />;
   }
 
-  // fallback
+  // App Android/iOS sem lavação escolhida
+  if (isApp) {
+    return <Navigate to="/app/selecionar-empresa" replace />;
+  }
+
+  // Web sem contexto: mantém fluxo administrativo atual
   return <Navigate to="/admin/login" replace />;
 }
