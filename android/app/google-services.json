@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "349182322942",
+    "project_id": "washsync-app",
+    "storage_bucket": "washsync-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:349182322942:android:bad7c4125caad648e51daf",
+        "android_client_info": {
+          "package_name": "br.com.washsync.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCknKg86sFBFBJdusdTg0LhjU-vtEzliy0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,5 @@
+
+import { useEffect, useRef } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,10 +12,40 @@ export default function ProtectedRoute({
   children,
   requireAdmin,
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isAdmin, isLoading, businessSlug, logout } = useAuth();
+  const {
+    isAuthenticated,
+    isAdmin,
+    isLoading,
+    businessSlug,
+    logout,
+  } = useAuth();
+
   const location = useLocation();
   const params = useParams();
   const currentSlug = params.slug;
+
+  const logoutStarted = useRef(false);
+
+  const wrongBusiness =
+    !isLoading &&
+    isAuthenticated &&
+    !isAdmin &&
+    !!currentSlug &&
+    !!businessSlug &&
+    currentSlug !== businessSlug;
+
+  useEffect(() => {
+    if (!wrongBusiness) {
+      logoutStarted.current = false;
+      return;
+    }
+
+    if (logoutStarted.current) return;
+
+    logoutStarted.current = true;
+
+    void logout();
+  }, [wrongBusiness, logout]);
 
   if (isLoading) {
     return (
@@ -25,29 +57,32 @@ export default function ProtectedRoute({
 
   if (!isAuthenticated) {
     if (currentSlug) {
-      return <Navigate to={`/empresa/${currentSlug}/login`} replace />;
+      return (
+        <Navigate
+          to={`/empresa/${currentSlug}/login`}
+          replace
+        />
+      );
     }
 
     return <Navigate to="/admin/login" replace />;
   }
 
-  // ADMIN nunca entra em rota de cliente
+  // Administrador não acessa as telas do cliente.
   if (isAdmin && location.pathname.startsWith('/empresa/')) {
     return <Navigate to="/admin" replace />;
   }
 
-  // CLIENTE nunca entra em rota de outra empresa
-  if (
-    !isAdmin &&
-    currentSlug &&
-    businessSlug &&
-    currentSlug !== businessSlug
-  ) {
-    logout();
-    return <Navigate to={`/empresa/${currentSlug}/login`} replace />;
+  // Bloqueia imediatamente o conteúdo de outra empresa.
+  if (wrongBusiness) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
-  // CLIENTE nunca entra em rota administrativa
+  // Cliente não acessa rotas administrativas.
   if (requireAdmin && !isAdmin) {
     return (
       <Navigate

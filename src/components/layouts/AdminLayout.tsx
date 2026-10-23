@@ -13,12 +13,14 @@ import {
   Droplets,
   SlidersHorizontal,
   Car,
+  Bell,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/admin/schedule', label: 'Agenda', icon: Calendar },
+  { path: '/admin/notifications', label: 'Notificações', icon: Bell },
   { path: '/admin/service-modes', label: 'Modalidades', icon: Settings },
   { path: '/admin/clients', label: 'Clientes', icon: Users },
   { path: '/admin/extras', label: 'Extras', icon: Sparkles },
@@ -37,10 +39,10 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/admin/login');
-  };
+const handleLogout = async () => {
+  await logout();
+  navigate('/admin/login', { replace: true });
+};
 
   return (
     <div className="app-shell flex bg-background">

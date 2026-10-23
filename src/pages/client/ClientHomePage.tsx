@@ -6,7 +6,11 @@ import { toast } from 'sonner';
 
 import ClientLayout from '@/components/layouts/ClientLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { enablePushNotifications } from '@/lib/push';
+import {
+  enablePushNotifications,
+  enableNativePushNotifications,
+  isNativePushSupported,
+} from '@/lib/push';
 import { notificationsApi, customersApi } from '@/lib/api';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,7 +63,14 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function ClientHomePage() {
-  const { user } = useAuth();
+const {
+  user,
+  nativePushStatus,
+  refreshNativePushStatus,
+} = useAuth();
+  const [nativePushEnabled, setNativePushEnabled] = useState(
+    () => Boolean(localStorage.getItem('washsync_native_push_token')),
+  );
   const { slug } = useParams<{ slug: string }>();
   const queryClient = useQueryClient();
 
@@ -99,7 +110,11 @@ export default function ClientHomePage() {
 
     (async () => {
       try {
-        if (nativeApp) return;
+if (nativeApp) {
+  // O status nativo será consultado pelo backend
+  // em uma etapa posterior.
+  return;
+}
         if (typeof window === 'undefined') return;
         if (!('serviceWorker' in navigator)) return;
         if (!('PushManager' in window)) return;
@@ -162,32 +177,33 @@ export default function ClientHomePage() {
     }
   };
 
-  const handleEnablePush = async () => {
-    if (nativeApp) return;
+const handleEnablePush = async () => {
+  try {
+    setEnablingPush(true);
 
-    try {
-      setEnablingPush(true);
-
+    if (nativeApp) {
+      await enableNativePushNotifications();
+      await refreshNativePushStatus();
+      setNativePushEnabled(true);
+      setPushEnabled(true);
+    } else {
       await enablePushNotifications();
 
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
 
-        setPushEnabled(Boolean(subscription));
-      } catch {
-        // ignora
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Notificações ativadas com sucesso');
-    } catch (error: any) {
-      toast.error(error?.message || 'Não foi possível ativar as notificações');
-    } finally {
-      setEnablingPush(false);
-      setCheckingPushStatus(false);
+      setPushEnabled(Boolean(subscription));
     }
-  };
+
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    toast.success('Notificações ativadas com sucesso');
+  } catch (error: any) {
+    toast.error(error?.message || 'Não foi possível ativar as notificações');
+  } finally {
+    setEnablingPush(false);
+    setCheckingPushStatus(false);
+  }
+};
 
   const firstName =
     ((profileData as any)?.name || (user as any)?.name || 'Cliente').split(' ')[0];
@@ -197,8 +213,12 @@ export default function ClientHomePage() {
     !isStandaloneMode() &&
     (showInstallBanner || isAndroidDevice());
 
-  const shouldShowPushBanner =
-    !nativeApp && !checkingPushStatus && !pushEnabled;
+const shouldShowPushBanner =
+  !checkingPushStatus &&
+  (nativeApp
+    ? isNativePushSupported() &&
+      nativePushStatus === 'inactive'
+    : !pushEnabled);
 
   return (
     <ClientLayout>

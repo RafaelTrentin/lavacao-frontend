@@ -41,10 +41,14 @@ export default function ClientLayout({
     refetchInterval: 30000,
   });
 
-  const handleLogout = () => {
-    logout();
-    navigate(effectiveSlug ? `/empresa/${effectiveSlug}/login` : '/admin/login');
-  };
+const handleLogout = async () => {
+  await logout();
+
+  navigate(
+    effectiveSlug ? `/empresa/${effectiveSlug}/login` : '/admin/login',
+    { replace: true },
+  );
+};
 
   return (
     <div className="flex h-[100dvh] min-h-[100dvh] w-full flex-col overflow-hidden bg-background">

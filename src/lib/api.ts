@@ -14,8 +14,11 @@ import type {
   NotificationItem,
 } from '@/types';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL nao configurada.');
+}
 
 type UploadImageResponse = {
   url: string;
@@ -33,29 +36,55 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('washsync_token');
-  if (token) {
+
+  // Preserva o JWT explicitamente fornecido por operações
+  // que precisam permanecer vinculadas a uma sessão específica.
+  if (!config.headers.Authorization && token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
+
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('washsync_token');
-      localStorage.removeItem('washsync_user');
+      const requestAuthorization = error.config?.headers?.Authorization;
 
-      const slug =
-        getCurrentBusinessSlugFromPath() ||
-        localStorage.getItem('washsync_business_slug');
+      const requestToken =
+        typeof requestAuthorization === 'string' &&
+        requestAuthorization.startsWith('Bearer ')
+          ? requestAuthorization.slice(7)
+          : null;
 
-      window.location.href = slug ? `/empresa/${slug}/login` : '/app';
+      const currentToken = localStorage.getItem('washsync_token');
+
+      // Uma resposta de uma sessão anterior não pode
+      // encerrar a sessão atualmente autenticada.
+      if (requestToken && requestToken !== currentToken) {
+        return Promise.reject(error);
+      }
+
+      if (currentToken && requestToken === currentToken) {
+        localStorage.removeItem('washsync_token');
+        localStorage.removeItem('washsync_user');
+
+        const slug =
+          getCurrentBusinessSlugFromPath() ||
+          localStorage.getItem('washsync_business_slug');
+
+        window.location.href = slug
+          ? `/empresa/${slug}/login`
+          : '/app';
+      }
     }
 
     return Promise.reject(error);
   },
 );
+
 
 function getCurrentBusinessSlugFromPath() {
   const match = window.location.pathname.match(/^\/empresa\/([^/]+)/);
@@ -423,6 +452,47 @@ export const pushNotificationsApi = {
         data: { endpoint },
       })
       .then((r) => r.data),
+
+      getDeviceStatus: (token: string) =>
+  api
+    .post<{
+      registered: boolean;
+      platform: 'ANDROID' | 'IOS' | null;
+    }>('/push-notifications/devices/status', { token })
+    .then((r) => r.data),
+
+
+registerDevice: (
+  data: {
+    platform: 'ANDROID' | 'IOS';
+    token: string;
+    installationId?: string;
+    revocationKey?: string;
+  },
+  sessionToken?: string,
+) =>
+  api
+    .post('/push-notifications/devices', data, {
+      headers: sessionToken
+        ? { Authorization: `Bearer ${sessionToken}` }
+        : undefined,
+    })
+    .then((r) => r.data),
+
+  unregisterDevice: (token: string) =>
+    api
+      .delete('/push-notifications/devices', {
+        data: { token },
+      })
+      .then((r) => r.data),
+
+revokeDeviceByKey: (revocationKey: string) =>
+  api
+    .post('/push-notifications/devices/revoke', {
+      revocationKey,
+    })
+    .then((r) => r.data),
+
 };
 
 export type PublicBusinessSummary = {

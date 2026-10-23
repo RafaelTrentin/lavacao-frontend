@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+  enableNativePushNotifications,
+  isNativePushSupported,
+} from '@/lib/push';
 import { useQuery } from '@tanstack/react-query';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { adminApi } from '@/lib/api';
@@ -18,6 +23,7 @@ import {
   Crown,
   Medal,
   Award,
+  Bell,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -52,7 +58,38 @@ function getGreeting() {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+const {
+  user,
+  nativePushStatus,
+  refreshNativePushStatus,
+} = useAuth();
+  const [enablingPush, setEnablingPush] = useState(false);
+  const [nativePushEnabled, setNativePushEnabled] = useState(
+    () => Boolean(localStorage.getItem('washsync_native_push_token')),
+  );
+
+const handleEnableNotifications = async () => {
+  if (enablingPush) return;
+
+  setEnablingPush(true);
+
+  try {
+    await enableNativePushNotifications();
+    await refreshNativePushStatus();
+    setNativePushEnabled(true);
+    toast.success('Notificações ativadas com sucesso!');
+  } catch (error) {
+    console.error('Falha ao ativar notificações:', error);
+
+    toast.error(
+      error instanceof Error
+        ? error.message
+        : 'Não foi possível ativar as notificações.',
+    );
+  } finally {
+    setEnablingPush(false);
+  }
+};
   const [rankingPeriod, setRankingPeriod] = useState<'MONTH' | 'WEEK'>('MONTH');
   const dashboardDate = format(new Date(), 'yyyy-MM-dd');
 
@@ -207,6 +244,32 @@ export default function AdminDashboard() {
               Aqui está um resumo do desempenho da sua lavação hoje.
             </p>
           </div>
+          {isNativePushSupported() && (
+  <button
+    type="button"
+    onClick={handleEnableNotifications}
+disabled={
+  enablingPush ||
+  nativePushStatus === 'active' ||
+  nativePushStatus === 'unknown'
+}
+    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
+  >
+    {enablingPush ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <Bell className="h-4 w-4" />
+    )}
+
+{enablingPush
+  ? 'Ativando...'
+  : nativePushStatus === 'active'
+    ? 'Notificações ativadas'
+    : nativePushStatus === 'unknown'
+      ? 'Verificando notificações...'
+      : 'Ativar notificações'}
+  </button>
+)}
         </motion.div>
 
         {/* KPIs */}

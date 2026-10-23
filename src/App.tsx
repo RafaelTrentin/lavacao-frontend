@@ -28,6 +28,8 @@ import AppSelectBusinessPage from '@/pages/AppSelectBusinessPage';
 import AppChangeBusinessPage from '@/pages/AppChangeBusinessPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
+import NativePushNavigation from '@/components/NativePushNavigation';
+import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -159,6 +161,15 @@ function AppRoutes() {
       />
 
       <Route
+        path="/admin/notifications"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AdminNotificationsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/admin"
         element={
           <ProtectedRoute requireAdmin>
@@ -226,10 +237,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+  <BrowserRouter>
+    <NativePushNavigation />
+    <AppRoutes />
+  </BrowserRouter>
+</AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
