@@ -73,6 +73,22 @@ export const authApi = {
     api.post<AuthResponse>('/auth/signup', data).then((r) => r.data),
 };
 
+// RECUPERACAO DE SENHA
+// Usa chamadas separadas para nao disparar o interceptor de login.
+export const passwordRecoveryApi = {
+  forgotPassword: (email: string, businessSlug: string) =>
+    axios.post<{ message: string }>(
+      `${API_BASE_URL}/auth/forgot-password`,
+      { email, businessSlug },
+    ).then((r) => r.data),
+
+  resetPassword: (token: string, newPassword: string) =>
+    axios.post<{ message: string }>(
+      `${API_BASE_URL}/auth/reset-password`,
+      { token, newPassword },
+    ).then((r) => r.data),
+};
+
 // SERVICE MODES
 export const serviceModesApi = {
   list: () =>

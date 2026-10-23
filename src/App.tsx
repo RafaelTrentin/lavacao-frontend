@@ -26,6 +26,8 @@ import RootRedirect from './pages/RootRedirect';
 import AppEntryPage from '@/pages/AppEntryPage';
 import AppSelectBusinessPage from '@/pages/AppSelectBusinessPage';
 import AppChangeBusinessPage from '@/pages/AppChangeBusinessPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +53,15 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<RootRedirect />} />
+      <Route
+  path="/empresa/:slug/esqueci-senha"
+  element={<ForgotPasswordPage />}
+/>
+
+<Route
+  path="/redefinir-senha"
+  element={<ResetPasswordPage />}
+/>
 
       <Route path="/app" element={<AppEntryPage />} />
       <Route path="/app/selecionar-empresa" element={<AppSelectBusinessPage />} />

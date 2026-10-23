@@ -210,6 +210,17 @@ navigate('/admin/login', { replace: true });
               </div>
             </div>
 
+            {!adminMode && slug && (
+  <div className="flex justify-end">
+    <Link
+      to={`/empresa/${slug}/esqueci-senha`}
+      className="text-sm font-semibold text-cyan-700 transition-colors hover:text-cyan-900 hover:underline"
+    >
+      Esqueci minha senha
+    </Link>
+  </div>
+)}
+
             {error && (
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
