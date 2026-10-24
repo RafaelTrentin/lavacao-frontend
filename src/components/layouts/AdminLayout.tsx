@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import {
   LayoutDashboard,
   Calendar,
@@ -41,7 +42,10 @@ export default function AdminLayout({
 
 const handleLogout = async () => {
   await logout();
-  navigate('/admin/login', { replace: true });
+  navigate(
+    Capacitor.isNativePlatform() ? '/app/selecionar-empresa' : '/admin/login',
+    { replace: true },
+  );
 };
 
   return (

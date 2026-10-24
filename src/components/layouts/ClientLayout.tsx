@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import {
   Home,
   CalendarPlus,
@@ -45,7 +46,11 @@ const handleLogout = async () => {
   await logout();
 
   navigate(
-    effectiveSlug ? `/empresa/${effectiveSlug}/login` : '/admin/login',
+    Capacitor.isNativePlatform()
+      ? '/app/selecionar-empresa'
+      : effectiveSlug
+        ? `/empresa/${effectiveSlug}/login`
+        : '/admin/login',
     { replace: true },
   );
 };

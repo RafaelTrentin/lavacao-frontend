@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Capacitor } from '@capacitor/core';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -56,6 +57,10 @@ export default function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
+    if (Capacitor.isNativePlatform()) {
+      return <Navigate to="/app/selecionar-empresa" replace />;
+    }
+
     if (currentSlug) {
       return (
         <Navigate
