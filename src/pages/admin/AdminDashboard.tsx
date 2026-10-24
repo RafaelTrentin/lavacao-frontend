@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   enablePushNotifications,
+  getWebPushSubscriptionStatus,
   enableNativePushNotifications,
   isNativePushSupported,
 } from '@/lib/push';
@@ -66,6 +67,18 @@ const {
 } = useAuth();
   const [enablingPush, setEnablingPush] = useState(false);
   const [webPushEnabled, setWebPushEnabled] = useState(false);
+  const [checkingWebPush, setCheckingWebPush] = useState(!isNativePushSupported());
+
+  useEffect(() => {
+    if (isNativePushSupported()) return;
+    let cancelled = false;
+    setCheckingWebPush(true);
+    void getWebPushSubscriptionStatus()
+      .then((enabled) => { if (!cancelled) setWebPushEnabled(enabled); })
+      .catch(() => { if (!cancelled) setWebPushEnabled(false); })
+      .finally(() => { if (!cancelled) setCheckingWebPush(false); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
   const [nativePushEnabled, setNativePushEnabled] = useState(
     () => Boolean(localStorage.getItem('washsync_native_push_token')),
   );
@@ -257,6 +270,7 @@ const handleEnableNotifications = async () => {
   onClick={handleEnableNotifications}
   disabled={
     enablingPush ||
+    (!isNativePushSupported() && checkingWebPush) ||
     (isNativePushSupported()
       ? nativePushStatus === 'active' || nativePushStatus === 'unknown'
       : webPushEnabled)
@@ -277,9 +291,11 @@ const handleEnableNotifications = async () => {
         : nativePushStatus === 'unknown'
           ? 'Verificando notificações...'
           : 'Ativar notificações'
-      : webPushEnabled
-        ? 'Notificações ativadas'
-        : 'Ativar notificações'}
+      : checkingWebPush
+        ? 'Verificando notificações...'
+        : webPushEnabled
+          ? 'Notificações ativadas'
+          : 'Ativar notificações'}
 </button>
         </motion.div>
 

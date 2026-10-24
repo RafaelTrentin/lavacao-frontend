@@ -56,50 +56,49 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export async function enablePushNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    throw new Error('Push não suportado neste navegador');
+export async function getWebPushSubscriptionStatus(): Promise<boolean> {
+  if (isNativePushSupported() || !('serviceWorker' in navigator) ||
+      !('PushManager' in window) || !('Notification' in window) ||
+      Notification.permission !== 'granted') {
+    return false;
+  }
+  const registration = await navigator.serviceWorker.ready;
+  return Boolean(await registration.pushManager.getSubscription());
+}
+
+export async function enablePushNotifications(): Promise<boolean> {
+  if (isNativePushSupported() || !('serviceWorker' in navigator) ||
+      !('PushManager' in window) || !('Notification' in window)) {
+    throw new Error('Push Web não suportado neste navegador');
   }
 
   const permission = await Notification.requestPermission();
-
   if (permission !== 'granted') {
     throw new Error('Permissão de notificação negada');
   }
 
   const registration = await navigator.serviceWorker.ready;
   const { publicKey } = await pushNotificationsApi.getPublicKey();
-
   if (!publicKey) {
     throw new Error('Chave pública de push não configurada');
   }
 
-  // Remove inscrição antiga para garantir vínculo novo com as chaves atuais
-  const existingSubscription = await registration.pushManager.getSubscription();
-
-  if (existingSubscription) {
-    try {
-      await pushNotificationsApi.unsubscribe(existingSubscription.endpoint);
-    } catch {
-      // ignora falha de cleanup no backend
-    }
-
-    try {
-      await existingSubscription.unsubscribe();
-    } catch {
-      // ignora falha local de unsubscribe
-    }
+  // Reaproveita a inscrição existente. Não destrói uma inscrição válida
+  // sempre que o administrador clica no botão.
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
   }
 
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  });
-
+  // Reassocia a inscrição ao usuário e à empresa autenticados.
+  // O backend faz o upsert do endpoint por sessão.
   await pushNotificationsApi.subscribe(subscription.toJSON());
-
   return true;
 }
+
 export function isNativePushSupported(): boolean {
   return Capacitor.isNativePlatform() &&
     ['android', 'ios'].includes(Capacitor.getPlatform());
