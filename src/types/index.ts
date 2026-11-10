@@ -19,7 +19,7 @@ export interface SignupDTO {
   phone: string;
   email: string;
   password: string;
-  role: 'ADMIN' | 'CUSTOMER';
+  role: 'CUSTOMER';
   businessSlug: string;
 }
 

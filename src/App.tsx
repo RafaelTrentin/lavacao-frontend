@@ -1,5 +1,5 @@
 import { useBranding } from '@/hooks/useBranding';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import SessionQueryProvider from '@/components/SessionQueryProvider';
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
@@ -30,15 +30,6 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import NativePushNavigation from '@/components/NativePushNavigation';
 import AdminNotificationsPage from '@/pages/admin/AdminNotificationsPage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 30000,
-    },
-  },
-});
 
 function AppRoutes() {
   useBranding();
@@ -232,18 +223,18 @@ function AppRoutes() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-  <BrowserRouter>
-    <NativePushNavigation />
-    <AppRoutes />
-  </BrowserRouter>
-</AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <AuthProvider>
+    <BrowserRouter>
+      <NativePushNavigation />
+      <SessionQueryProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppRoutes />
+        </TooltipProvider>
+      </SessionQueryProvider>
+    </BrowserRouter>
+  </AuthProvider>
 );
 
 export default App;

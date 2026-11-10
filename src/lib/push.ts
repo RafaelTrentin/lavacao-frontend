@@ -267,6 +267,7 @@ export function getRegisteredNativePushToken(): string | null {
 }
 
 export async function unregisterNativePushNotifications(): Promise<void> {
+  if (!isNativePushSupported()) return;
   // Coordena com qualquer registro FCM iniciado pela tela ou sincronização.
   if (nativeRegistrationPromise) {
     try { await nativeRegistrationPromise; } catch { /* revogação ainda será tentada */ }

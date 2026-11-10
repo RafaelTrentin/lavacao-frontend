@@ -1,18 +1,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AppChangeBusinessPage() {
   const navigate = useNavigate();
+  const { logout, isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    localStorage.removeItem('washsync_token');
-    localStorage.removeItem('washsync_user');
-    localStorage.removeItem('washsync_business_slug');
-    localStorage.removeItem('branding');
-
-    navigate('/app/selecionar-empresa', { replace: true });
-  }, [navigate]);
+    if (isLoading) return;
+    if (isAuthenticated || localStorage.getItem('washsync_business_slug') || localStorage.getItem('branding')) {
+      void logout();
+    } else {
+      navigate('/app/selecionar-empresa', { replace: true });
+    }
+  }, [navigate, logout, isAuthenticated, isLoading]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background via-background to-muted/30 px-4">

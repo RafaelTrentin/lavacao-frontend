@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSessionCache, resetSessionCache, SESSION_EXPIRED_EVENT } from './session-cache';
 import type {
   AuthResponse,
   SignupDTO,
@@ -34,7 +35,15 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const requestSessions = new WeakMap<object, number>();
+
+function isStaleRequest(config: object | undefined) {
+  return !!config && requestSessions.has(config) &&
+    requestSessions.get(config) !== getSessionCache().revision;
+}
+
 api.interceptors.request.use((config) => {
+  requestSessions.set(config, getSessionCache().revision);
   const token = localStorage.getItem('washsync_token');
 
   // Preserva o JWT explicitamente fornecido por operações
@@ -44,12 +53,20 @@ api.interceptors.request.use((config) => {
   }
 
   return config;
-});
+}, undefined, { synchronous: true });
 
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (isStaleRequest(response.config)) {
+      throw new axios.CanceledError('Sessão alterada');
+    }
+    return response;
+  },
   (error) => {
+    if (isStaleRequest(error.config)) {
+      return Promise.reject(new axios.CanceledError('Sessão alterada'));
+    }
     if (error.response?.status === 401) {
       const requestAuthorization = error.config?.headers?.Authorization;
 
@@ -74,6 +91,11 @@ api.interceptors.response.use(
         const slug =
           getCurrentBusinessSlugFromPath() ||
           localStorage.getItem('washsync_business_slug');
+
+        localStorage.removeItem('washsync_business_slug');
+        localStorage.removeItem('branding');
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+        resetSessionCache();
 
         window.location.href = slug
           ? `/empresa/${slug}/login`

@@ -9,6 +9,7 @@ import React, {
 import { jwtDecode } from 'jwt-decode';
 import type { User, SignupDTO } from '@/types';
 import { authApi } from '@/lib/api';
+import { resetSessionCache, SESSION_EXPIRED_EVENT } from '@/lib/session-cache';
 import { flushPendingNativePushRevocation } from '@/lib/native-push-revocation';
 import {
   unregisterNativePushNotifications,
@@ -74,6 +75,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 >('unknown');
 const pendingPushSyncRef = useRef<Promise<void> | null>(null);
 const loggingOutRef = useRef(false);
+const logoutPromiseRef = useRef<Promise<void> | null>(null);
+const authAttemptRef = useRef(0);
+
+  useEffect(() => {
+    const expireSession = () => {
+      authAttemptRef.current += 1;
+      clearSessionStorage();
+      setToken(null);
+      setUser(null);
+      setBusinessSlug(null);
+      setNativePushStatus('unknown');
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expireSession);
+  }, []);
 
 const refreshNativePushStatus = useCallback(async () => {
     if (!isNativePushSupported()) return;
@@ -116,9 +132,11 @@ const refreshNativePushStatus = useCallback(async () => {
           localStorage.setItem('washsync_user', JSON.stringify(builtUser));
         } else {
           clearSessionStorage();
+          resetSessionCache();
         }
       } catch {
         clearSessionStorage();
+        resetSessionCache();
       }
     }
 
@@ -212,15 +230,20 @@ useEffect(() => {
 
   const login = useCallback(
     async (email: string, password: string, slug?: string) => {
+      if (loggingOutRef.current) throw new Error('Aguarde a conclusão do logout.');
+      const attempt = ++authAttemptRef.current;
       if (isNativePushSupported() && !(await flushPendingNativePushRevocation())) {
         throw new Error('A revogação de notificações da conta anterior ainda está pendente. Verifique a conexão.');
       }
       const normalizedSlug = slug?.trim() || undefined;
       const response = await authApi.login(email, password, normalizedSlug);
-
-      localStorage.setItem('washsync_token', response.accessToken);
-
+      if (attempt !== authAttemptRef.current || loggingOutRef.current) {
+        throw new Error('Tentativa de login cancelada: sessão alterada.');
+      }
       const builtUser = buildUserFromToken(response.accessToken);
+      resetSessionCache();
+      localStorage.removeItem('branding');
+      localStorage.setItem('washsync_token', response.accessToken);
       localStorage.setItem('washsync_user', JSON.stringify(builtUser));
 
       if (normalizedSlug) {
@@ -238,14 +261,19 @@ useEffect(() => {
   );
 
   const signup = useCallback(async (data: SignupDTO) => {
+    if (loggingOutRef.current) throw new Error('Aguarde a conclusão do logout.');
+    const attempt = ++authAttemptRef.current;
     if (isNativePushSupported() && !(await flushPendingNativePushRevocation())) {
       throw new Error('Revogação de notificações pendente. Verifique a conexão.');
     }
     const response = await authApi.signup(data);
-
-    localStorage.setItem('washsync_token', response.accessToken);
-
+    if (attempt !== authAttemptRef.current || loggingOutRef.current) {
+      throw new Error('Tentativa de cadastro cancelada: sessão alterada.');
+    }
     const builtUser = buildUserFromToken(response.accessToken);
+    resetSessionCache();
+    localStorage.removeItem('branding');
+    localStorage.setItem('washsync_token', response.accessToken);
     localStorage.setItem('washsync_user', JSON.stringify(builtUser));
 
     if (data.businessSlug) {
@@ -262,31 +290,42 @@ useEffect(() => {
   }, []);
 
 
-const logout = useCallback(async () => {
-  if (loggingOutRef.current) return;
+const logout = useCallback(() => {
+  // Todos os chamadores aguardam a mesma revogação e limpeza de sessão.
+  if (logoutPromiseRef.current) return logoutPromiseRef.current;
   loggingOutRef.current = true;
+  authAttemptRef.current += 1;
 
-  try {
-    // Aguarda o término de uma sincronização automática
-    // iniciada antes do logout.
-    if (pendingPushSyncRef.current) {
-      await pendingPushSyncRef.current;
+  const task = (async () => {
+    try {
+      // Aguarda o término de uma sincronização automática
+      // iniciada antes do logout.
+      if (pendingPushSyncRef.current) {
+        await pendingPushSyncRef.current;
+      }
+
+      await unregisterNativePushNotifications();
+    } catch (error) {
+      console.error(
+        'Não foi possível desvincular o dispositivo das notificações:',
+        error,
+      );
+    } finally {
+      // Etapa 05: não descartar a sessão HTTP antes da tentativa de revogação.
+      clearSessionStorage();
+      resetSessionCache();
+      setToken(null);
+      setUser(null);
+      setBusinessSlug(null);
+      setNativePushStatus('unknown');
+      loggingOutRef.current = false;
     }
-
-    await unregisterNativePushNotifications();
-  } catch (error) {
-    console.error(
-      'Não foi possível desvincular o dispositivo das notificações:',
-      error,
-    );
-  } finally {
-    clearSessionStorage();
-    setToken(null);
-    setUser(null);
-    setBusinessSlug(null);
-    setNativePushStatus('unknown');
-    loggingOutRef.current = false;
-  }
+  })();
+  const tracked = task.finally(() => {
+    if (logoutPromiseRef.current === tracked) logoutPromiseRef.current = null;
+  });
+  logoutPromiseRef.current = tracked;
+  return tracked;
 }, []);
 
 

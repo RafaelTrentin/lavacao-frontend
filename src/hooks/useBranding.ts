@@ -63,7 +63,7 @@ export function useBranding() {
     slug !== savedBusinessSlug;
 
   const { data } = useQuery({
-    queryKey: ['branding-global', slug, !!token, savedBusinessSlug],
+    queryKey: ['branding-global', slug, savedUser?.businessId, savedUser?.id, savedBusinessSlug],
     queryFn: async () => {
       if (shouldBlockCrossCompanyBranding) {
         return publicBusinessApi.getBySlug(slug!);
