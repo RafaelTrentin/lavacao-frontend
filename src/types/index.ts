@@ -89,6 +89,9 @@ export interface TimeSlot {
   startTime: string;
   endTime: string;
   displayLabel: string;
+  scheduledStartAt: string;
+  scheduledEndAt: string;
+  timezone: string;
 }
 
 export interface Appointment {
@@ -104,6 +107,8 @@ export interface Appointment {
   scheduledEndAt: string;
   snapshotServiceModeName: string;
   snapshotTotalPriceInCents: number;
+  searchType?: 'CURRENT_LOCATION' | 'MANUAL_ADDRESS' | null;
+  searchFeeStatus?: 'NOT_APPLICABLE' | 'CALCULATED' | 'TO_CONFIRM_EXTERNALLY';
   vehicleType: VehicleType;
   willSearchVehicle: boolean;
   createdAt: string;

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { unregisterWebPush } from './web-push-session';
 import { getSessionCache, resetSessionCache, SESSION_EXPIRED_EVENT } from './session-cache';
 import type {
   AuthResponse,
@@ -16,6 +17,11 @@ import type {
 } from '@/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+export interface BusinessClosure {
+  id: string; type: string; isRecurring: boolean; blockDate: string; blockEndDate: string; timezone: string;
+  affectedAppointments: Array<{ id: string; bookingNumber: string; scheduledStartAt: string; status: string; customer: { name: string } }>;
+}
 
 if (!API_BASE_URL) {
   throw new Error('VITE_API_BASE_URL nao configurada.');
@@ -63,7 +69,7 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     if (isStaleRequest(error.config)) {
       return Promise.reject(new axios.CanceledError('Sessão alterada'));
     }
@@ -85,6 +91,10 @@ api.interceptors.response.use(
       }
 
       if (currentToken && requestToken === currentToken) {
+        // Complete local Web Push suppression before the hard navigation.
+        // Native cleanup is deliberately left to its existing flow.
+        try { await unregisterWebPush(); } catch { /* pending proof is retained */ }
+        if (localStorage.getItem('washsync_token') !== currentToken) return Promise.reject(error);
         localStorage.removeItem('washsync_token');
         localStorage.removeItem('washsync_user');
 
@@ -246,6 +256,10 @@ export const extraServicesApi = {
 
 // AVAILABILITY
 export const availabilityApi = {
+  getSlotsWithStatus: (serviceModeId: string, vehicleType: string, date: string) =>
+    api.get<{ slots: TimeSlot[]; closed: boolean; message: string | null }>('/availability/slots', {
+      params: { serviceModeId, vehicleType, date, includeStatus: 'true' },
+    }).then((r) => r.data),
   getSlots: (serviceModeId: string, vehicleType: string, date: string) =>
     api
       .get<TimeSlot[]>('/availability/slots', {
@@ -309,6 +323,11 @@ export const appointmentsApi = {
 
 // ADMIN
 export const adminApi = {
+  closures: () => api.get<BusinessClosure[]>('/admin/schedule-blocks').then((r) => r.data.filter((block) => block.type === 'FULL_DAY' && !block.isRecurring)),
+  closeBusiness: (blockDate: string, blockEndDate: string) => api.post<BusinessClosure>('/admin/schedule-blocks', {
+    type: 'FULL_DAY', blockDate, blockEndDate, isRecurring: false, reason: 'Lavação fechada',
+  }).then((r) => r.data),
+  removeClosure: (id: string) => api.delete(`/admin/schedule-blocks/${id}`).then((r) => r.data),
   dashboardSummary: (date?: string) =>
     api
       .get<DashboardSummary>('/admin/dashboard/summary', {
@@ -460,13 +479,24 @@ export const notificationsApi = {
 };
 
 export const pushNotificationsApi = {
-  getPublicKey: () =>
-    api
-      .get<{ publicKey: string }>('/push-notifications/public-key')
+  getPublicKey: (sessionToken?: string) =>
+    (sessionToken
+      ? axios.get<{ publicKey: string }>(`${API_BASE_URL}/push-notifications/public-key`, {
+        headers: { Authorization: `Bearer ${sessionToken}` }, timeout: 10000,
+      })
+      : api.get<{ publicKey: string }>('/push-notifications/public-key'))
       .then((r) => r.data),
 
-  subscribe: (subscription: PushSubscriptionJSON) =>
-    api.post('/push-notifications/subscribe', subscription).then((r) => r.data),
+  subscribe: (subscription: PushSubscriptionJSON, sessionToken?: string) =>
+    // Dedicated transport: a 401 while holding the Web Push lock must not invoke
+    // logout, which needs that same lock. The caller handles failure/cleanup.
+    axios.post(`${API_BASE_URL}/push-notifications/subscribe`, subscription, {
+      headers: { Authorization: `Bearer ${sessionToken || localStorage.getItem('washsync_token') || ''}` },
+      timeout: 10000,
+    }).then((r) => r.data),
+
+  revokeWeb: (data: PushSubscriptionJSON & { userId: string; businessId: string }) =>
+    axios.post(`${API_BASE_URL}/push-notifications/web/revoke`, data, { timeout: 10000 }).then((r) => r.data),
 
   unsubscribe: (endpoint: string) =>
     api

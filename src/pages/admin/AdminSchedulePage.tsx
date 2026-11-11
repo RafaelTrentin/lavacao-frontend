@@ -1,3 +1,6 @@
+import { slotStartLabel } from '@/lib/business-time';
+import { useBusinessTimezone } from '@/hooks/useBusinessTimezone';
+import { businessCalendarDate, formatBusinessDate, slotInstant } from '@/lib/business-time';
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -82,8 +85,10 @@ type ClientMode = 'existing' | 'quick';
 
 export default function AdminSchedulePage() {
   const queryClient = useQueryClient();
+  const timezone = useBusinessTimezone();
 
-  const [date, setDate] = useState<Date>(new Date());
+  const [selectedDay, setDate] = useState<Date>();
+  const date = selectedDay ?? businessCalendarDate(new Date(), timezone ?? 'UTC');
   const [showCreatePanel, setShowCreatePanel] = useState(false);
 
   const [clientMode, setClientMode] = useState<ClientMode>('existing');
@@ -137,6 +142,7 @@ export default function AdminSchedulePage() {
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ['admin-appointments', formattedDate],
+    enabled: !!timezone,
     queryFn: async () => {
       const result = await adminApi.appointments({ date: formattedDate });
       return Array.isArray(result) ? result : [];
@@ -182,7 +188,7 @@ export default function AdminSchedulePage() {
   const { data: slots = [], isLoading: loadingSlots } = useQuery({
     queryKey: ['admin-available-slots', serviceModeId, vehicleType, formattedDate],
     queryFn: () => availabilityApi.getSlots(serviceModeId, vehicleType, formattedDate),
-    enabled: !!serviceModeId && !!vehicleType && !!showCreatePanel,
+    enabled: !!timezone && !!serviceModeId && !!vehicleType && !!showCreatePanel,
   });
 
   const { data: rescheduleSlots = [], isLoading: loadingRescheduleSlots } = useQuery({
@@ -245,8 +251,9 @@ export default function AdminSchedulePage() {
   };
 
   const openRescheduleModal = (apt: any) => {
+    if (!timezone) return;
     setRescheduleAppointment(apt);
-    setRescheduleDate(apt.scheduledStartAt ? new Date(apt.scheduledStartAt) : new Date());
+    setRescheduleDate(businessCalendarDate(apt.scheduledStartAt || new Date(), timezone!));
     setRescheduleSlot(null);
     setShowRescheduleModal(true);
   };
@@ -262,7 +269,9 @@ export default function AdminSchedulePage() {
       toast.error('Selecione um novo horário');
       return;
     }
-    const newScheduledStartAt = `${format(rescheduleDate, 'yyyy-MM-dd')}T${rescheduleSlot.startTime}:00-03:00`;
+    let newScheduledStartAt: string;
+    try { newScheduledStartAt = slotInstant(rescheduleSlot); }
+    catch (error) { toast.error((error as Error).message); return; }
     rescheduleMutation.mutate({ id: rescheduleAppointment.id, newScheduledStartAt });
   };
 
@@ -393,7 +402,9 @@ export default function AdminSchedulePage() {
         return;
       }
     }
-    const scheduledStartAt = `${formattedDate}T${selectedSlot.startTime}:00-03:00`;
+    let scheduledStartAt: string;
+    try { scheduledStartAt = slotInstant(selectedSlot); }
+    catch (error) { toast.error((error as Error).message); return; }
     const appointmentPayload: any = {
       serviceModeId,
       vehicleType,
@@ -914,17 +925,17 @@ export default function AdminSchedulePage() {
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {(slots as TimeSlot[]).map((slot) => (
                         <button
-                          key={slot.startTime}
+                          key={slot.scheduledStartAt}
                           type="button"
                           onClick={() => setSelectedSlot(slot)}
                           className={cn(
                             'rounded-xl border-2 py-3 text-sm font-medium transition-all',
-                            selectedSlot?.startTime === slot.startTime
+                            selectedSlot?.scheduledStartAt === slot.scheduledStartAt
                               ? 'border-primary bg-primary text-primary-foreground'
                               : 'border-border bg-card text-foreground hover:border-primary/30',
                           )}
                         >
-                          {slot.startTime}
+                          {slotStartLabel(slot)}
                         </button>
                       ))}
                     </div>
@@ -940,7 +951,7 @@ export default function AdminSchedulePage() {
                     </p>
                     <p>
                       <span className="font-medium text-foreground">Horário:</span>{' '}
-                      {selectedSlot?.displayLabel || '-'}
+                      {selectedSlot ? slotStartLabel(selectedSlot) : '-'}
                     </p>
                     <p>
                       <span className="font-medium text-foreground">Serviço:</span>{' '}
@@ -957,7 +968,7 @@ export default function AdminSchedulePage() {
                       <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
                         <p className="font-medium">Taxa de busca: A confirmar pela lavação</p>
                         <p className="mt-1 text-amber-800/80">
-                          Para endereço manual, a taxa pode variar conforme a distância.
+                          Defina se haverá cobrança e combine o valor diretamente com o cliente, fora do app.
                         </p>
                       </div>
                     )}
@@ -1074,11 +1085,11 @@ export default function AdminSchedulePage() {
                       <Clock className="h-4 w-4 text-primary sm:hidden" />
                       <div className="flex items-baseline gap-1 sm:flex-col sm:items-center sm:gap-0">
                         <span className="text-xl font-bold leading-none text-primary sm:text-2xl">
-                          {start ? format(start, 'HH:mm') : '--:--'}
+                          {start && timezone ? formatBusinessDate(start, timezone) : '--:--'}
                         </span>
                         {start && end && (
                           <span className="text-[11px] font-medium text-muted-foreground">
-                            até {format(end, 'HH:mm')}
+                            até {timezone ? formatBusinessDate(end, timezone) : '--:--'}
                           </span>
                         )}
                       </div>
@@ -1168,8 +1179,7 @@ export default function AdminSchedulePage() {
                                     Taxa de busca: A confirmar pela lavação
                                   </p>
                                   <p className="mt-0.5 text-amber-800/80">
-                                    Para endereço manual, a taxa pode variar conforme a
-                                    distância.
+                                    Cobrança a combinar diretamente com o cliente, fora do app. Não incluída no valor exibido.
                                   </p>
                                 </div>
                               )}
@@ -1300,17 +1310,17 @@ export default function AdminSchedulePage() {
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
                     {(rescheduleSlots as TimeSlot[]).map((slot) => (
                       <button
-                        key={slot.startTime}
+                        key={slot.scheduledStartAt}
                         type="button"
                         onClick={() => setRescheduleSlot(slot)}
                         className={cn(
                           'rounded-xl border-2 py-3 text-sm font-medium transition-all',
-                          rescheduleSlot?.startTime === slot.startTime
+                          rescheduleSlot?.scheduledStartAt === slot.scheduledStartAt
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-border bg-card text-foreground hover:border-primary/30',
                         )}
                       >
-                        {slot.startTime}
+                        {slotStartLabel(slot)}
                       </button>
                     ))}
                   </div>
@@ -1338,7 +1348,7 @@ export default function AdminSchedulePage() {
                     </p>
                     <p>
                       <span className="font-medium text-foreground">Novo horário:</span>{' '}
-                      {rescheduleSlot?.displayLabel || '-'}
+                      {rescheduleSlot ? slotStartLabel(rescheduleSlot) : '-'}
                     </p>
                   </div>
                 </div>

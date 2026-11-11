@@ -1,3 +1,5 @@
+import { useBusinessTimezone } from '@/hooks/useBusinessTimezone';
+import { formatBusinessDate } from '@/lib/business-time';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ClientLayout from '@/components/layouts/ClientLayout';
 import { appointmentsApi } from '@/lib/api';
@@ -17,8 +19,6 @@ import {
   Sparkles,
   Truck,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -117,6 +117,7 @@ function formatPrice(cents: number | null | undefined) {
 // ----------------------------------------------------------------------------
 
 export default function MyAppointmentsPage() {
+  const timezone = useBusinessTimezone();
   const { slug } = useParams<{ slug: string }>();
   const queryClient = useQueryClient();
 
@@ -284,10 +285,10 @@ export default function MyAppointmentsPage() {
                                 Data
                               </div>
                               <div className="text-sm font-semibold">
-                                {format(start, "dd 'de' MMM", { locale: ptBR })}
+                                {timezone ? formatBusinessDate(start, timezone, { day: '2-digit', month: 'short' }) : '--'}
                               </div>
                               <div className="text-[11px] text-muted-foreground">
-                                {format(start, 'EEEE', { locale: ptBR })}
+                                {timezone ? formatBusinessDate(start, timezone, { weekday: 'long' }) : '--'}
                               </div>
                             </div>
                             <div className="rounded-lg border border-border/60 bg-card p-3">
@@ -296,11 +297,11 @@ export default function MyAppointmentsPage() {
                                 Horário
                               </div>
                               <div className="text-sm font-semibold">
-                                {format(start, 'HH:mm')}
-                                {end && ` – ${format(end, 'HH:mm')}`}
+                                {timezone ? formatBusinessDate(start, timezone) : '--:--'}
+                                {end && ` – ${timezone ? formatBusinessDate(end, timezone) : '--:--'}`}
                               </div>
                               <div className="text-[11px] text-muted-foreground">
-                                {format(start, 'yyyy')}
+                                {timezone ? formatBusinessDate(start, timezone, { year: 'numeric' }) : '--'}
                               </div>
                             </div>
                           </div>
@@ -341,6 +342,11 @@ export default function MyAppointmentsPage() {
                             </div>
                             <div className="text-lg font-bold text-primary">
                               {formatPrice(apt.snapshotTotalPriceInCents)}
+                              {apt.willSearchVehicle && (apt.searchFeeStatus === 'TO_CONFIRM_EXTERNALLY' || apt.searchType === 'MANUAL_ADDRESS') && (
+                                <p className="mt-1 text-xs font-normal text-muted-foreground">
+                                  Taxa de busca a confirmar pela lavação, fora do app. Não incluída neste valor.
+                                </p>
+                              )}
                             </div>
                           </div>
 

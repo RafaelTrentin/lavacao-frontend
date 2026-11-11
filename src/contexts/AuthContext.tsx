@@ -9,6 +9,7 @@ import React, {
 import { jwtDecode } from 'jwt-decode';
 import type { User, SignupDTO } from '@/types';
 import { authApi } from '@/lib/api';
+import { unregisterWebPush, flushPendingWebPush, syncExistingWebPush } from '@/lib/web-push-session';
 import { resetSessionCache, SESSION_EXPIRED_EVENT } from '@/lib/session-cache';
 import { flushPendingNativePushRevocation } from '@/lib/native-push-revocation';
 import {
@@ -79,7 +80,22 @@ const logoutPromiseRef = useRef<Promise<void> | null>(null);
 const authAttemptRef = useRef(0);
 
   useEffect(() => {
+    if (isNativePushSupported() || !token || isLoading) return;
+    const sync = () => {
+      if (!loggingOutRef.current) void syncExistingWebPush(token).catch(() => {});
+    };
+    sync();
+    window.addEventListener('online', sync);
+    navigator.serviceWorker?.addEventListener('controllerchange', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      navigator.serviceWorker?.removeEventListener('controllerchange', sync);
+    };
+  }, [token, isLoading]);
+
+  useEffect(() => {
     const expireSession = () => {
+      if (!isNativePushSupported()) void unregisterWebPush().catch(() => {});
       authAttemptRef.current += 1;
       clearSessionStorage();
       setToken(null);
@@ -89,6 +105,32 @@ const authAttemptRef = useRef(0);
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expireSession);
+  }, []);
+
+  useEffect(() => {
+    if (isNativePushSupported()) return;
+    const cleanup = () => { void flushPendingWebPush().catch(() => {}); };
+    const changed = (event: StorageEvent) => {
+      if (event.key !== 'washsync_token' && event.key !== null) return;
+      // localStorage is shared: an older tab must never retain its old identity/cache.
+      authAttemptRef.current += 1;
+      resetSessionCache();
+      const current = localStorage.getItem('washsync_token');
+      try {
+        const decoded = current && jwtDecode<JwtPayload>(current);
+        if (decoded && decoded.exp && decoded.exp * 1000 > Date.now()) {
+          setUser(buildUserFromToken(current!)); setToken(current);
+          setBusinessSlug(localStorage.getItem('washsync_business_slug'));
+          return;
+        }
+      } catch { /* invalid shared session */ }
+      setUser(null); setToken(null); setBusinessSlug(null);
+      void unregisterWebPush().catch(() => {});
+    };
+    cleanup();
+    window.addEventListener('online', cleanup);
+    window.addEventListener('storage', changed);
+    return () => { window.removeEventListener('online', cleanup); window.removeEventListener('storage', changed); };
   }, []);
 
 const refreshNativePushStatus = useCallback(async () => {
@@ -131,15 +173,18 @@ const refreshNativePushStatus = useCallback(async () => {
           setBusinessSlug(savedBusinessSlug || null);
           localStorage.setItem('washsync_user', JSON.stringify(builtUser));
         } else {
+          if (!isNativePushSupported()) void unregisterWebPush().catch(() => {});
           clearSessionStorage();
           resetSessionCache();
         }
       } catch {
+        if (!isNativePushSupported()) void unregisterWebPush().catch(() => {});
         clearSessionStorage();
         resetSessionCache();
       }
     }
 
+    if (!savedToken && !isNativePushSupported()) void unregisterWebPush().catch(() => {});
     setIsLoading(false);
   }, []);
 
@@ -236,6 +281,7 @@ useEffect(() => {
         throw new Error('A revogação de notificações da conta anterior ainda está pendente. Verifique a conexão.');
       }
       const normalizedSlug = slug?.trim() || undefined;
+      if (!isNativePushSupported()) await unregisterWebPush();
       const response = await authApi.login(email, password, normalizedSlug);
       if (attempt !== authAttemptRef.current || loggingOutRef.current) {
         throw new Error('Tentativa de login cancelada: sessão alterada.');
@@ -266,6 +312,7 @@ useEffect(() => {
     if (isNativePushSupported() && !(await flushPendingNativePushRevocation())) {
       throw new Error('Revogação de notificações pendente. Verifique a conexão.');
     }
+    if (!isNativePushSupported()) await unregisterWebPush();
     const response = await authApi.signup(data);
     if (attempt !== authAttemptRef.current || loggingOutRef.current) {
       throw new Error('Tentativa de cadastro cancelada: sessão alterada.');
@@ -304,6 +351,7 @@ const logout = useCallback(() => {
         await pendingPushSyncRef.current;
       }
 
+      if (!isNativePushSupported()) await unregisterWebPush();
       await unregisterNativePushNotifications();
     } catch (error) {
       console.error(

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/layouts/AdminLayout';
+import BusinessClosures from '@/components/admin/BusinessClosures';
 import { adminApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -564,6 +565,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        <BusinessClosures />
         <div className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-card">
           <div className="flex items-center gap-2">
             <Clock3 className="h-5 w-5 text-primary" />

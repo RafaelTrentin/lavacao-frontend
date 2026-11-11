@@ -1,3 +1,6 @@
+import { slotStartLabel } from '@/lib/business-time';
+import { useBusinessTimezone } from '@/hooks/useBusinessTimezone';
+import { businessCalendarDate, businessDateKey, slotInstant } from '@/lib/business-time';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -75,6 +78,7 @@ function isNativeCapacitorApp(): boolean {
 export default function NewAppointmentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const timezone = useBusinessTimezone();
   const { slug } = useParams();
   const basePath = slug ? `/empresa/${slug}` : '';
 
@@ -117,28 +121,29 @@ export default function NewAppointmentPage() {
   });
 
   const formattedDate = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-  const slotsQueryKey = ['slots', serviceMode?.id, vehicleType, formattedDate];
+  const slotsQueryKey = ['slots', 'with-status', serviceMode?.id, vehicleType, formattedDate];
 
   const {
-    data: slots = [],
+    data: availability,
     isLoading: loadingSlots,
     refetch: refetchSlots,
   } = useQuery({
     queryKey: slotsQueryKey,
     queryFn: () =>
-      availabilityApi.getSlots(serviceMode!.id, vehicleType!, formattedDate),
-    enabled: !!serviceMode && !!vehicleType && !!selectedDate,
+      availabilityApi.getSlotsWithStatus(serviceMode!.id, vehicleType!, formattedDate),
+    enabled: !!timezone && !!serviceMode && !!vehicleType && !!selectedDate,
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
+  const slots = availability?.slots ?? [];
 
   useEffect(() => {
     if (!selectedSlot) return;
     const stillExists = slots.some(
-      (slot) => slot.startTime === selectedSlot.startTime,
+      (slot) => slot.scheduledStartAt === selectedSlot.scheduledStartAt,
     );
     if (!stillExists) {
       setSelectedSlot(null);
@@ -197,7 +202,7 @@ export default function NewAppointmentPage() {
     searchType === 'CURRENT_LOCATION' &&
     !!location;
 
-  const { data: searchEstimate, isLoading: loadingSearchEstimate } = useQuery({
+  const { data: searchEstimate, isLoading: loadingSearchEstimate, isError: searchEstimateFailed } = useQuery({
     queryKey: [
       'estimate-search-fee',
       serviceMode?.id,
@@ -247,7 +252,8 @@ export default function NewAppointmentPage() {
   const totalPrice = () => {
     const base = selectedRule ? selectedRule.basePriceInCents / 100 : 0;
     if (pickupDelivery && searchType === 'CURRENT_LOCATION') {
-      const searchFee = (searchEstimate?.searchFeeInCents || 0) / 100;
+      if (loadingSearchEstimate || searchEstimateFailed || !searchEstimate) return null;
+      const searchFee = searchEstimate.searchFeeInCents / 100;
       return base + searchFee;
     }
     return base;
@@ -343,6 +349,11 @@ export default function NewAppointmentPage() {
       toast.error('Capture sua localização atual antes de confirmar');
       return;
     }
+    if (pickupDelivery && searchType === 'CURRENT_LOCATION' &&
+        (loadingSearchEstimate || searchEstimateFailed || !searchEstimate)) {
+      toast.error('Aguarde um orçamento válido da taxa de busca antes de confirmar');
+      return;
+    }
     if (pickupDelivery && searchType === 'MANUAL_ADDRESS') {
       if (
         !manualAddress.streetAddress ||
@@ -356,7 +367,9 @@ export default function NewAppointmentPage() {
       }
     }
 
-    const scheduledStartAt = `${format(selectedDate, 'yyyy-MM-dd')}T${selectedSlot.startTime}:00-03:00`;
+    let scheduledStartAt: string;
+    try { scheduledStartAt = slotInstant(selectedSlot); }
+    catch (error) { toast.error((error as Error).message); return; }
 
     const data: CreateAppointmentDTO & Record<string, any> = {
       serviceModeId: serviceMode.id,
@@ -639,6 +652,8 @@ export default function NewAppointmentPage() {
                   <div className="rounded-2xl border border-border bg-card p-2 shadow-sm sm:p-4">
                     <div className="flex justify-center">
                       <Calendar
+                        key={timezone}
+                        defaultMonth={timezone ? businessCalendarDate(new Date(), timezone) : undefined}
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => {
@@ -647,7 +662,7 @@ export default function NewAppointmentPage() {
                         }}
                         locale={ptBR}
                         disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                          !timezone || format(date, 'yyyy-MM-dd') < businessDateKey(new Date(), timezone)
                         }
                         className="pointer-events-auto"
                       />
@@ -679,7 +694,7 @@ export default function NewAppointmentPage() {
                     <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
                       <Clock className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
                       <p className="font-medium text-foreground">
-                        Nenhum horário disponível
+                        {availability?.closed ? 'Lavação fechada nesta data' : 'Nenhum horário disponível'}
                       </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Tente selecionar outra data para ver os horários livres.
@@ -697,10 +712,10 @@ export default function NewAppointmentPage() {
                       </div>
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {slots.map((slot) => {
-                          const isSelected = selectedSlot?.startTime === slot.startTime;
+                          const isSelected = selectedSlot?.scheduledStartAt === slot.scheduledStartAt;
                           return (
                             <button
-                              key={slot.startTime}
+                              key={slot.scheduledStartAt}
                               type="button"
                               onClick={() => setSelectedSlot(slot)}
                               className={cn(
@@ -715,7 +730,7 @@ export default function NewAppointmentPage() {
                                   <Check className="h-2.5 w-2.5" />
                                 </span>
                               )}
-                              {slot.startTime}
+                              {slotStartLabel(slot)}
                             </button>
                           );
                         })}
@@ -913,7 +928,7 @@ export default function NewAppointmentPage() {
                                   Taxa de busca a confirmar
                                 </p>
                                 <p className="mt-1 text-muted-foreground">
-                                  Para endereço manual, a taxa pode variar conforme a distância.
+                                  A lavação decidirá se haverá cobrança e combinará o valor com você fora do app.
                                 </p>
                               </div>
                             </div>
@@ -974,7 +989,7 @@ export default function NewAppointmentPage() {
                       />
                       <SummaryRow
                         label="Horário"
-                        value={selectedSlot?.displayLabel || ''}
+                        value={selectedSlot ? slotStartLabel(selectedSlot) : ''}
                       />
                       <SummaryRow
                         label="Busca/Entrega"
@@ -999,7 +1014,8 @@ export default function NewAppointmentPage() {
                             value={
                               loadingSearchEstimate
                                 ? 'Calculando...'
-                                : `${Number(searchEstimate?.distanceKm || 0).toFixed(2)} km`
+                                : searchEstimateFailed || !searchEstimate ? 'Não foi possível calcular'
+                                : `${Number(searchEstimate.distanceKm).toFixed(2)} km`
                             }
                           />
                           <SummaryRow
@@ -1007,7 +1023,8 @@ export default function NewAppointmentPage() {
                             value={
                               loadingSearchEstimate
                                 ? 'Calculando...'
-                                : `R$ ${((searchEstimate?.searchFeeInCents || 0) / 100).toFixed(2)}`
+                                : searchEstimateFailed || !searchEstimate ? 'Não foi possível calcular'
+                                : `R$ ${(searchEstimate.searchFeeInCents / 100).toFixed(2)}`
                             }
                           />
                         </>
@@ -1019,7 +1036,7 @@ export default function NewAppointmentPage() {
                             Taxa de busca: A confirmar pela lavação
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Para endereço manual, a taxa pode variar conforme a distância.
+                            A lavação decidirá se haverá cobrança e combinará o valor com você fora do app. Essa taxa não está incluída no valor abaixo.
                           </p>
                         </div>
                       )}
@@ -1029,10 +1046,10 @@ export default function NewAppointmentPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Total
+                            {pickupDelivery && searchType === 'MANUAL_ADDRESS' ? 'Valor no app (sem taxa de busca)' : 'Total'}
                           </p>
                           <p className="text-2xl font-bold text-primary">
-                            R$ {totalPrice().toFixed(2)}
+                            {totalPrice() === null ? 'Taxa de busca indisponível' : `R$ ${totalPrice()!.toFixed(2)}`}
                           </p>
                         </div>
                         <Badge className="rounded-full bg-success/15 text-success hover:bg-success/20">

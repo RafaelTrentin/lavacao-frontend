@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import SessionQueryProvider from '@/components/SessionQueryProvider';
-import api, { customersApi } from '@/lib/api';
+import api, { customersApi, pushNotificationsApi } from '@/lib/api';
 import { getSessionCache, resetSessionCache } from '@/lib/session-cache';
 import { unregisterNativePushNotifications } from '@/lib/push';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -59,6 +59,43 @@ async function login(name: keyof typeof identities) {
 async function logout() {
   await act(async () => { await auth.logout(); });
 }
+
+it('does not start session logout from a Web Push 401 while registration holds its lock', async () => {
+  const original = axios.defaults.adapter;
+  localStorage.setItem('washsync_token', tokenFor('b'));
+  axios.defaults.adapter = async (config) => {
+    expect(config.headers.Authorization).toBe(`Bearer ${tokenFor('a')}`);
+    throw new AxiosError('unauthorized', 'ERR_BAD_REQUEST', config, undefined,
+      { ...reply(config, {}), status: 401 });
+  };
+  try {
+    await expect(pushNotificationsApi.subscribe({ endpoint: 'https://push.example.test/a' }, tokenFor('a'))).rejects.toThrow('unauthorized');
+    await expect(pushNotificationsApi.getPublicKey(tokenFor('a'))).rejects.toThrow('unauthorized');
+    expect(localStorage.getItem('washsync_token')).toBe(tokenFor('b'));
+  } finally { axios.defaults.adapter = original; }
+});
+
+it('updates identity and private cache when another tab logs in to a different company', async () => {
+  await mount(); await login('a');
+  const previous = getSessionCache().client;
+  previous.setQueryData(['private'], 'account-a');
+  await act(async () => {
+    localStorage.setItem('washsync_token', tokenFor('c'));
+    localStorage.setItem('washsync_business_slug', 'wash-2');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'washsync_token', newValue: tokenFor('c') }));
+  });
+  expect(auth.user?.id).toBe('c'); expect(auth.businessSlug).toBe('wash-2');
+  expect(previous.getQueryCache().getAll()).toHaveLength(0);
+});
+it('clears the React session when another tab logs out', async () => {
+  await mount(); await login('a');
+  await act(async () => {
+    localStorage.removeItem('washsync_token');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'washsync_token', newValue: null }));
+  });
+  expect(auth.isAuthenticated).toBe(false);
+  expect(screen.getByTestId('identity')).toHaveTextContent('anonymous');
+});
 const originalAdapter = api.defaults.adapter;
 beforeEach(() => {
   localStorage.clear();

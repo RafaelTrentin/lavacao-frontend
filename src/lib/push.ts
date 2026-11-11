@@ -43,61 +43,7 @@ function assertPushSession(sessionToken: string): void {
   }
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-
-  return outputArray;
-}
-
-export async function getWebPushSubscriptionStatus(): Promise<boolean> {
-  if (isNativePushSupported() || !('serviceWorker' in navigator) ||
-      !('PushManager' in window) || !('Notification' in window) ||
-      Notification.permission !== 'granted') {
-    return false;
-  }
-  const registration = await navigator.serviceWorker.ready;
-  return Boolean(await registration.pushManager.getSubscription());
-}
-
-export async function enablePushNotifications(): Promise<boolean> {
-  if (isNativePushSupported() || !('serviceWorker' in navigator) ||
-      !('PushManager' in window) || !('Notification' in window)) {
-    throw new Error('Push Web não suportado neste navegador');
-  }
-
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    throw new Error('Permissão de notificação negada');
-  }
-
-  const registration = await navigator.serviceWorker.ready;
-  const { publicKey } = await pushNotificationsApi.getPublicKey();
-  if (!publicKey) {
-    throw new Error('Chave pública de push não configurada');
-  }
-
-  // Reaproveita a inscrição existente. Não destrói uma inscrição válida
-  // sempre que o administrador clica no botão.
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    });
-  }
-
-  // Reassocia a inscrição ao usuário e à empresa autenticados.
-  // O backend faz o upsert do endpoint por sessão.
-  await pushNotificationsApi.subscribe(subscription.toJSON());
-  return true;
-}
+export { enableWebPush as enablePushNotifications, webPushStatus as getWebPushSubscriptionStatus } from './web-push-session';
 
 export function isNativePushSupported(): boolean {
   return Capacitor.isNativePlatform() &&
